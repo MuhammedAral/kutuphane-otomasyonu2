@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: kutuphane_mssql
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Password123
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    networks:
+      - kutuphane_network
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Password123 -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build: .
+    container_name: kutuphane_app
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      - DB_SERVER=mssql
+      - DB_NAME=KutuphaneDB
+      - DB_USER=sa
+      - DB_PASSWORD=YourStrong@Password123
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./app:/app
+    networks:
+      - kutuphane_network
+    command: python app.py
+
+volumes:
+  mssql_data:
+
+networks:
+  kutuphane_network:
+    driver: bridge
