@@ -1,129 +1,90 @@
-# Kütüphane Otomasyon Sistemi
+# 📚 Kütüphane Otomasyon Sistemi
 
-📚 Modern ve kullanıcı dostu kütüphane yönetim sistemi. Masaüstü uygulaması ve REST API ile tam özellikli.
+Merhaba! Bu proje, kütüphanelerin günlük işlerini kolaylaştırmak için geliştirilmiş bir yazılım. Kitap takibi, üye yönetimi ve ödünç işlemleri gibi temel ihtiyaçları karşılıyor.
 
-<<<<<<< HEAD
-## ✨ Özellikler
+## Ne İşe Yarar?
 
-### 📱 Masaüstü Uygulaması
-- **Modern Arayüz:** CustomTkinter ile karanlık tema destekli şık tasarım
-- **Kitap Yönetimi:** Ekleme, düzenleme, silme, arama
-- **Üye Yönetimi:** Üye kayıt ve takip sistemi
-- **Ödünç İşlemleri:** Kitap ödünç verme ve iade takibi
-- **Barkod Tarama:** Kamera ile barkod okuma desteği
-- **Excel Entegrasyonu:** Kitapları Excel'den/e aktarma
-- **Gecikme Takibi:** Geciken kitapların otomatik tespiti
+Bir kütüphane düşünün: Raflarınızda yüzlerce kitap var, onlarca üyeniz kitap alıp iade ediyor. Bunların hepsini kağıt kalemle takip etmek hem zor hem de hata yapma riski yüksek. İşte bu uygulama tam da bu sorunu çözüyor.
 
-### 🌐 REST API
-- **FastAPI:** Hızlı ve modern Python API framework
-- **JWT Kimlik Doğrulama:** Güvenli token tabanlı yetkilendirme
-- **Swagger Dokümantasyonu:** Otomatik API dokümantasyonu
-- **CORS Desteği:** Web uygulamaları için hazır
+**Masaüstü uygulaması** ile bilgisayarınızdan tüm işlemleri yapabilirsiniz. Ayrıca **REST API** sayesinde ileride mobil uygulama veya web sitesi de ekleyebilirsiniz.
 
-## 🛠️ Teknolojiler
+## Neler Yapabilirsiniz?
 
-| Bileşen | Teknoloji |
-|---------|-----------|
-| Masaüstü | Python, CustomTkinter |
-| API | FastAPI, Uvicorn |
-| Veritabanı | SQL Server (Docker) |
-| Kimlik Doğrulama | JWT, SHA-256 |
+### Kitap İşlemleri
+- Yeni kitap ekleyebilirsiniz
+- Mevcut kitapları düzenleyebilir veya silebilirsiniz
+- Barkod okuyucu ile hızlıca kitap tarayabilirsiniz
+- Excel dosyasından toplu kitap aktarabilirsiniz
 
-## 📦 Kurulum
+### Üye İşlemleri
+- Yeni üye kaydı oluşturabilirsiniz
+- Üye bilgilerini güncelleyebilirsiniz
+- Hangi üyede hangi kitap var görebilirsiniz
 
-### Gereksinimler
-- Python 3.10+
-- Docker Desktop
-- ODBC Driver 18 for SQL Server
+### Ödünç İşlemleri
+- Kitap ödünç verebilirsiniz
+- İade alabilirsiniz
+- Geciken kitapları takip edebilirsiniz
 
-### 1. Veritabanını Başlatın
+## Nasıl Kurulur?
+
+### 1. Öncelikle Docker'ı başlatın
+Veritabanı için SQL Server kullanıyoruz. Docker ile çok kolay:
+
 ```bash
 docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Password123" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-### 2. Masaüstü Uygulaması
+### 2. Masaüstü uygulamasını çalıştırın
 ```bash
 cd desktop
 pip install -r requirements.txt
 python main.py
 ```
 
-### 3. API
+### 3. API'yi başlatın (isteğe bağlı)
 ```bash
 cd api
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-## 🔐 Varsayılan Giriş Bilgileri
+## Giriş Bilgileri
 
-| Kullanıcı Adı | Şifre | Rol |
-|---------------|-------|-----|
-| admin | admin123 | Yönetici |
+İlk açılışta kullanabileceğiniz hazır bir yönetici hesabı var:
 
-## 📡 API Endpoints
+- **Kullanıcı adı:** admin
+- **Şifre:** admin123
 
-| Endpoint | Metod | Açıklama |
-|----------|-------|----------|
-| `/auth/login` | POST | Giriş yap |
-| `/kitaplar` | GET/POST | Kitap listele/ekle |
-| `/kitaplar/{id}` | GET/PUT/DELETE | Kitap detay/güncelle/sil |
-| `/odunc` | GET/POST | Ödünç işlemleri |
-| `/odunc/{id}/iade` | POST | Kitap iade |
-| `/uyeler` | GET/POST | Üye listele/ekle |
-| `/turler` | GET | Kitap türleri |
-| `/istatistikler` | GET | İstatistikler |
+## API Kullanımı
 
-**API Dokümantasyonu:** http://localhost:8000/docs
+API'yi başlattıktan sonra tarayıcınızda şu adresi açın:
 
-## 📸 Ekran Görüntüleri
+👉 http://localhost:8000/docs
 
-### Masaüstü Uygulaması
-- Modern karanlık tema
-- Sezgisel sidebar menüsü
-- Tablo görünümleri
+Burada tüm API endpoint'lerini görebilir ve test edebilirsiniz.
 
-### API Swagger
-- İnteraktif API dokümantasyonu
-- Test arayüzü
-
-## 📁 Proje Yapısı
+## Proje Yapısı
 
 ```
-kutuphane-otomasyonu/
-├── desktop/                 # Masaüstü uygulaması
-│   ├── main.py             # Ana uygulama
-│   ├── database.py         # Veritabanı işlemleri
-│   ├── ui_kitaplar_enhanced.py
-│   ├── ui_uyeler.py
-│   ├── ui_odunc.py
-│   ├── ui_dashboard.py
-│   ├── assets/             # Logo ve görseller
-│   └── requirements.txt
-├── api/                    # REST API
-│   ├── main.py            # FastAPI uygulaması
-│   └── requirements.txt
-└── README.md
+📁 kutuphane-otomasyonu
+├── 📁 desktop          → Masaüstü uygulaması
+│   ├── main.py         → Ana uygulama dosyası
+│   ├── database.py     → Veritabanı işlemleri
+│   └── assets          → Logo ve görseller
+├── 📁 api              → REST API
+│   └── main.py         → API endpoint'leri
+└── README.md           → Bu dosya
 ```
 
-## 🚀 Gelecek Özellikler
+## Yardım ve Destek
 
-- [ ] Mobil uygulama
-- [ ] Email/SMS bildirimleri
-- [ ] Raporlama sistemi
-- [ ] QR kod desteği
-- [ ] Çoklu dil desteği
+Bir sorunla karşılaşırsanız veya öneriniz varsa GitHub üzerinden issue açabilirsiniz.
 
-## 👨‍💻 Geliştirici
+## Lisans
 
-**Muhammed Ali Aral**
-
-## 📄 Lisans
-
-Bu proje MIT lisansı altında lisanslanmıştır.
+Bu proje açık kaynaklıdır ve özgürce kullanabilirsiniz.
 
 ---
 
-⭐ Bu projeyi beğendiyseniz yıldız vermeyi unutmayın!
-=======
->>>>>>> 51571c7633d04c762d27542e054dacfa43523820
+Proje hakkında sorularınız varsa bana ulaşabilirsiniz. İyi kullanımlar! ✨
