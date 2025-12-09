@@ -1,69 +1,126 @@
 # Kütüphane Otomasyon Sistemi
 
-Docker, MSSQL ve Python kullanarak geliştirilmiş modern bir kütüphane yönetim sistemi.
+📚 Modern ve kullanıcı dostu kütüphane yönetim sistemi. Masaüstü uygulaması ve REST API ile tam özellikli.
 
-## 🚀 Özellikler
+## ✨ Özellikler
 
-- Kitap yönetimi (Ekleme, güncelleme, silme, listeleme)
-- Üye yönetimi
-- Kitap ödünç alma/iade işlemleri
-- Docker ile kolay kurulum
-- RESTful API
+### 📱 Masaüstü Uygulaması
+- **Modern Arayüz:** CustomTkinter ile karanlık tema destekli şık tasarım
+- **Kitap Yönetimi:** Ekleme, düzenleme, silme, arama
+- **Üye Yönetimi:** Üye kayıt ve takip sistemi
+- **Ödünç İşlemleri:** Kitap ödünç verme ve iade takibi
+- **Barkod Tarama:** Kamera ile barkod okuma desteği
+- **Excel Entegrasyonu:** Kitapları Excel'den/e aktarma
+- **Gecikme Takibi:** Geciken kitapların otomatik tespiti
 
-## 📋 Gereksinimler
+### 🌐 REST API
+- **FastAPI:** Hızlı ve modern Python API framework
+- **JWT Kimlik Doğrulama:** Güvenli token tabanlı yetkilendirme
+- **Swagger Dokümantasyonu:** Otomatik API dokümantasyonu
+- **CORS Desteği:** Web uygulamaları için hazır
 
-- Docker
-- Docker Compose
-- Git
+## 🛠️ Teknolojiler
 
-## 🔧 Kurulum
+| Bileşen | Teknoloji |
+|---------|-----------|
+| Masaüstü | Python, CustomTkinter |
+| API | FastAPI, Uvicorn |
+| Veritabanı | SQL Server (Docker) |
+| Kimlik Doğrulama | JWT, SHA-256 |
 
-1. **Repoyu klonlayın:**
+## 📦 Kurulum
+
+### Gereksinimler
+- Python 3.10+
+- Docker Desktop
+- ODBC Driver 18 for SQL Server
+
+### 1. Veritabanını Başlatın
 ```bash
-git clone <repository-url>
-cd kutuphane-otomasyonu
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Password123" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-2. **Docker container'ları başlatın:**
+### 2. Masaüstü Uygulaması
 ```bash
-docker-compose up -d
+cd desktop
+pip install -r requirements.txt
+python main.py
 ```
 
-3. **Veritabanı otomatik olarak oluşturulacak ve hazır hale gelecektir.**
-
-4. **Uygulamaya erişin:**
+### 3. API
+```bash
+cd api
+pip install -r requirements.txt
+uvicorn main:app --reload
 ```
-http://localhost:5000
+
+## 🔐 Varsayılan Giriş Bilgileri
+
+| Kullanıcı Adı | Şifre | Rol |
+|---------------|-------|-----|
+| admin | admin123 | Yönetici |
+
+## 📡 API Endpoints
+
+| Endpoint | Metod | Açıklama |
+|----------|-------|----------|
+| `/auth/login` | POST | Giriş yap |
+| `/kitaplar` | GET/POST | Kitap listele/ekle |
+| `/kitaplar/{id}` | GET/PUT/DELETE | Kitap detay/güncelle/sil |
+| `/odunc` | GET/POST | Ödünç işlemleri |
+| `/odunc/{id}/iade` | POST | Kitap iade |
+| `/uyeler` | GET/POST | Üye listele/ekle |
+| `/turler` | GET | Kitap türleri |
+| `/istatistikler` | GET | İstatistikler |
+
+**API Dokümantasyonu:** http://localhost:8000/docs
+
+## 📸 Ekran Görüntüleri
+
+### Masaüstü Uygulaması
+- Modern karanlık tema
+- Sezgisel sidebar menüsü
+- Tablo görünümleri
+
+### API Swagger
+- İnteraktif API dokümantasyonu
+- Test arayüzü
+
+## 📁 Proje Yapısı
+
+```
+kutuphane-otomasyonu/
+├── desktop/                 # Masaüstü uygulaması
+│   ├── main.py             # Ana uygulama
+│   ├── database.py         # Veritabanı işlemleri
+│   ├── ui_kitaplar_enhanced.py
+│   ├── ui_uyeler.py
+│   ├── ui_odunc.py
+│   ├── ui_dashboard.py
+│   ├── assets/             # Logo ve görseller
+│   └── requirements.txt
+├── api/                    # REST API
+│   ├── main.py            # FastAPI uygulaması
+│   └── requirements.txt
+└── README.md
 ```
 
-## 📊 Veritabanı Yapısı
+## 🚀 Gelecek Özellikler
 
-### Tablolar:
-- **Kitaplar**: Kütüphanedeki kitap bilgileri
-- **Uyeler**: Kütüphane üyeleri
-- **OduncIslemleri**: Kitap ödünç alma/iade kayıtları
+- [ ] Mobil uygulama
+- [ ] Email/SMS bildirimleri
+- [ ] Raporlama sistemi
+- [ ] QR kod desteği
+- [ ] Çoklu dil desteği
 
-## 🔌 API Endpoints
+## 👨‍💻 Geliştirici
 
-### Kitaplar
-- `GET /api/kitaplar` - Tüm kitapları listele
-- `GET /api/kitaplar/<id>` - Belirli bir kitabı getir
-- `POST /api/kitaplar` - Yeni kitap ekle
-- `PUT /api/kitaplar/<id>` - Kitap güncelle
-- `DELETE /api/kitaplar/<id>` - Kitap sil
-
-### Üyeler
-- `GET /api/uyeler` - Tüm üyeleri listele
-- `GET /api/uyeler/<id>` - Belirli bir üyeyi getir
-- `POST /api/uyeler` - Yeni üye ekle
-- `PUT /api/uyeler/<id>` - Üye güncelle
-- `DELETE /api/uyeler/<id>` - Üye sil
-
-### Ödünç İşlemleri
-- `GET /api/odunc` - Tüm ödünç işlemlerini listele
-- `POST /api/odunc` - Yeni ödünç işlemi
-- `PUT /api/odunc/<id>/iade` - Kitap iade et
+**Muhammed Ali Aral**
 
 ## 📄 Lisans
 
-MIT
+Bu proje MIT lisansı altında lisanslanmıştır.
+
+---
+
+⭐ Bu projeyi beğendiyseniz yıldız vermeyi unutmayın!

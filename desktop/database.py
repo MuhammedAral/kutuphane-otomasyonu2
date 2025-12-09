@@ -41,17 +41,22 @@ class Database:
     def create_database(self):
         """Veritabanını oluştur"""
         try:
+            # CREATE DATABASE için autocommit gerekli
+            self.conn.autocommit = True
             cursor = self.conn.cursor()
-            cursor.execute(f"""
-                IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '{self.database}')
-                BEGIN
-                    CREATE DATABASE {self.database}
-                END
-            """)
-            self.conn.commit()
-            print(f"✅ {self.database} veritabanı hazır!")
             
+            # Önce veritabanı var mı kontrol et
+            cursor.execute(f"SELECT name FROM sys.databases WHERE name = '{self.database}'")
+            if not cursor.fetchone():
+                cursor.execute(f"CREATE DATABASE {self.database}")
+                print(f"✅ {self.database} veritabanı oluşturuldu!")
+            else:
+                print(f"✅ {self.database} veritabanı mevcut!")
+            
+            self.conn.autocommit = False
             self.conn.close()
+            
+            # Yeni veritabanına bağlan
             conn_string = (
                 f'DRIVER={{ODBC Driver 18 for SQL Server}};'
                 f'SERVER={self.server};'
