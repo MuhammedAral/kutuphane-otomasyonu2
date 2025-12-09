@@ -2,6 +2,7 @@
 
 📚 Modern ve kullanıcı dostu kütüphane yönetim sistemi. Masaüstü uygulaması ve REST API ile tam özellikli.
 
+<<<<<<< HEAD
 ## ✨ Özellikler
 
 ### 📱 Masaüstü Uygulaması
@@ -124,3 +125,5 @@ Bu proje MIT lisansı altında lisanslanmıştır.
 ---
 
 ⭐ Bu projeyi beğendiyseniz yıldız vermeyi unutmayın!
+=======
+>>>>>>> 51571c7633d04c762d27542e054dacfa43523820
