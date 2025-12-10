@@ -12,6 +12,7 @@ namespace KutuphaneOtomasyon.Views
         public AdminWindow(int userId, string adSoyad)
         {
             InitializeComponent();
+            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
             _userId = userId;
             _adSoyad = adSoyad;
             txtAdminName.Text = $"👤 {adSoyad} (Yönetici)";
@@ -46,6 +47,18 @@ namespace KutuphaneOtomasyon.Views
         {
             SetActiveButton((Button)sender);
             MainFrame.Navigate(new Pages.OduncPage());
+        }
+        
+        private void Ayarlar_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveButton((Button)sender);
+            MainFrame.Navigate(new Pages.AyarlarPage());
+        }
+        
+        private void Raporlar_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveButton((Button)sender);
+            MainFrame.Navigate(new Pages.RaporlarPage());
         }
         
         private void Logout_Click(object sender, RoutedEventArgs e)

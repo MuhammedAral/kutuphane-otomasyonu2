@@ -6,7 +6,8 @@
         Height="700" Width="1200"
         MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
-        Background="#1e1e2e">
+        Background="#1e1e2e"
+        Icon="/Assets/logo.png">
     
     <Grid>
         <Grid.ColumnDefinitions>

@@ -1,0 +1,98 @@
+<Page x:Class="KutuphaneOtomasyon.Pages.AyarlarPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+      Title="Ayarlar"
+      Background="#1e1e2e">
+    
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Başlık -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,25">
+            <TextBlock Text="⚙️ Sistem Ayarları" FontSize="26" FontWeight="Bold" Foreground="White"/>
+            <TextBlock Text="Ödünç verme ve gecikme ayarlarını buradan yönetebilirsiniz" 
+                       FontSize="13" Foreground="#8b8b9e" Margin="0,5,0,0"/>
+        </StackPanel>
+        
+        <!-- Ayarlar Kartları -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                
+                <!-- Ödünç Ayarları -->
+                <Border Background="#252536" CornerRadius="15" Padding="25" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="📋 Ödünç Ayarları" FontSize="18" FontWeight="SemiBold" 
+                                   Foreground="White" Margin="0,0,0,20"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Maksimum Ödünç Gün -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,20">
+                                <TextBlock Text="Maksimum Ödünç Süresi" FontSize="14" Foreground="White" Margin="0,0,0,4"/>
+                                <TextBlock Text="Bir üyenin kitabı ödünç alabileceği maksimum gün sayısı" 
+                                           FontSize="12" Foreground="#8b8b9e" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="#1e1e2e" CornerRadius="8" Width="100" Height="40">
+                                    <TextBox x:Name="txtMaxGun" Background="Transparent" BorderThickness="0" 
+                                             Foreground="White" FontSize="14" TextAlignment="Center" 
+                                             VerticalContentAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="gün" Foreground="#8b8b9e" VerticalAlignment="Center" Margin="10,0,0,0" Width="30"/>
+                            </StackPanel>
+                            
+                            <!-- Gecikme Ücreti -->
+                            <StackPanel Grid.Row="1" Grid.Column="0">
+                                <TextBlock Text="Günlük Gecikme Ücreti" FontSize="14" Foreground="White" Margin="0,0,0,4"/>
+                                <TextBlock Text="Geciken her gün için uygulanacak ücret" 
+                                           FontSize="12" Foreground="#8b8b9e" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="#1e1e2e" CornerRadius="8" Width="100" Height="40">
+                                    <TextBox x:Name="txtGecikmeUcreti" Background="Transparent" BorderThickness="0" 
+                                             Foreground="White" FontSize="14" TextAlignment="Center" 
+                                             VerticalContentAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="TL" Foreground="#8b8b9e" VerticalAlignment="Center" Margin="10,0,0,0" Width="30"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Bilgi Kartı -->
+                <Border Background="#1a3a5c" CornerRadius="15" Padding="20" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="ℹ️" FontSize="24" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                        <StackPanel>
+                            <TextBlock Text="Bilgi" FontSize="14" FontWeight="SemiBold" Foreground="White"/>
+                            <TextBlock Text="Değişiklikler kaydedildikten sonra yeni ödünç işlemlerinde geçerli olacaktır." 
+                                       FontSize="12" Foreground="#a0c4e8" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Kaydet Butonu -->
+                <Button x:Name="btnKaydet" Content="💾 Ayarları Kaydet" Click="Kaydet_Click"
+                        Background="#10b981" Foreground="White" BorderThickness="0"
+                        Height="50" FontSize="15" FontWeight="SemiBold"
+                        HorizontalAlignment="Left" Padding="30,0"/>
+                
+                <!-- Son Kayıt Bilgisi -->
+                <TextBlock x:Name="txtSonKayit" FontSize="11" Foreground="#6b7280" Margin="0,10,0,0"/>
+                
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

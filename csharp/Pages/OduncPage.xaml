@@ -9,26 +9,82 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
             <TextBlock Text="🔄 Ödünç İşlemleri" FontSize="22" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
             <Button Content="+ Yeni Ödünç" Click="YeniOdunc_Click" 
-                    Background="#27ae60" Foreground="White" BorderThickness="0"
+                    Background="#1e40af" Foreground="White" BorderThickness="0"
                     Margin="20,0,0,0" Height="36" Padding="16,0" FontSize="12"/>
         </StackPanel>
         
+        <!-- İstatistik Kartları -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,15">
-            <RadioButton x:Name="rbTum" Content="Tümü" IsChecked="True" 
-                         Foreground="#c8c8d8" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
-            <RadioButton x:Name="rbOdunc" Content="Ödünçte" 
-                         Foreground="#c8c8d8" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
-            <RadioButton x:Name="rbIade" Content="İade Edilmiş" 
-                         Foreground="#c8c8d8" Checked="Filter_Changed" FontSize="13"/>
+            <Border Background="#252536" CornerRadius="8" Padding="15,10" Margin="0,0,15,0">
+                <StackPanel>
+                    <TextBlock Text="Aktif Ödünç" Foreground="#8b8b9e" FontSize="11"/>
+                    <TextBlock x:Name="txtAktifOdunc" Text="0" Foreground="#3b82f6" FontSize="20" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+            <Border Background="#252536" CornerRadius="8" Padding="15,10" Margin="0,0,15,0">
+                <StackPanel>
+                    <TextBlock Text="Geciken" Foreground="#8b8b9e" FontSize="11"/>
+                    <TextBlock x:Name="txtGeciken" Text="0" Foreground="#ef4444" FontSize="20" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+            <Border Background="#252536" CornerRadius="8" Padding="15,10">
+                <StackPanel>
+                    <TextBlock Text="Toplam Gecikme Ücreti" Foreground="#8b8b9e" FontSize="11"/>
+                    <TextBlock x:Name="txtToplamUcret" Text="₺0.00" Foreground="#f59e0b" FontSize="20" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
         
-        <Border Grid.Row="2" Background="#252536" CornerRadius="8" Padding="1">
+        <Grid Grid.Row="2" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Modern Arama Kutusu -->
+            <Border Grid.Column="0" Background="#252536" CornerRadius="22" Height="40">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="🔍" Grid.Column="0" VerticalAlignment="Center" Margin="15,0,5,0" 
+                               FontSize="14" Foreground="#8b8b9e"/>
+                    
+                    <TextBox x:Name="txtSearch" Grid.Column="1"
+                             materialDesign:HintAssist.Hint="Kitap adı veya üye ara..."
+                             materialDesign:HintAssist.Foreground="#666680"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="White" FontSize="13"
+                             VerticalContentAlignment="Center" Padding="5,0,15,0"
+                             Margin="0"
+                             TextChanged="Search_TextChanged"
+                             CaretBrush="#3b82f6"/>
+                </Grid>
+            </Border>
+
+            <!-- Filtreler -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <RadioButton x:Name="rbTum" Content="Tümü" IsChecked="True" 
+                             Foreground="#c8c8d8" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
+                <RadioButton x:Name="rbOdunc" Content="Ödünçte" 
+                             Foreground="#c8c8d8" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
+                <RadioButton x:Name="rbGeciken" Content="Geciken" 
+                             Foreground="#ef4444" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
+                <RadioButton x:Name="rbIade" Content="İade Edilmiş" 
+                             Foreground="#c8c8d8" Checked="Filter_Changed" FontSize="13"/>
+            </StackPanel>
+        </Grid>
+        
+        <Border Grid.Row="3" Background="#252536" CornerRadius="8" Padding="1">
             <DataGrid x:Name="dgOdunc" AutoGenerateColumns="False"
                       Background="#252536" Foreground="#c8c8d8"
                       GridLinesVisibility="Horizontal"
@@ -57,16 +113,18 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="ID" Binding="{Binding IslemID}" Width="50"/>
                     <DataGridTextColumn Header="Kitap" Binding="{Binding Baslik}" Width="*"/>
-                    <DataGridTextColumn Header="Üye" Binding="{Binding AdSoyad}" Width="140"/>
-                    <DataGridTextColumn Header="Ödünç Tarihi" Binding="{Binding OduncTarihi, StringFormat=dd/MM/yyyy}" Width="100"/>
-                    <DataGridTextColumn Header="İade Tarihi" Binding="{Binding BeklenenIadeTarihi, StringFormat=dd/MM/yyyy}" Width="100"/>
-                    <DataGridTextColumn Header="Durum" Binding="{Binding Durum}" Width="80"/>
-                    <DataGridTemplateColumn Header="İşlem" Width="80">
+                    <DataGridTextColumn Header="Üye" Binding="{Binding AdSoyad}" Width="130"/>
+                    <DataGridTextColumn Header="Ödünç" Binding="{Binding OduncTarihi, StringFormat=dd/MM/yy}" Width="75"/>
+                    <DataGridTextColumn Header="Son İade" Binding="{Binding BeklenenIadeTarihi, StringFormat=dd/MM/yy}" Width="75"/>
+                    <DataGridTextColumn Header="Gecikme" Binding="{Binding GecikmeGun}" Width="65"/>
+                    <DataGridTextColumn Header="Ücret" Binding="{Binding GecikmeUcreti, StringFormat=₺{0:F2}}" Width="70"/>
+                    <DataGridTextColumn Header="Durum" Binding="{Binding Durum}" Width="70"/>
+                    <DataGridTemplateColumn Header="İşlem" Width="70">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Button Content="İade" Click="IadeAl_Click" 
-                                        Background="#3498db" Foreground="White"
-                                        Width="60" Height="26" FontSize="11" BorderThickness="0"/>
+                                        Background="#1e40af" Foreground="White"
+                                        Width="55" Height="26" FontSize="11" BorderThickness="0"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

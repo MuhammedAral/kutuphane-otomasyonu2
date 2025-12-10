@@ -4,13 +4,116 @@
       Title="Profilim"
       Background="Transparent">
     
-    <Grid Margin="20">
-        <StackPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20">
+        <StackPanel MaxWidth="600" HorizontalAlignment="Left">
             <TextBlock Text="⚙️ Profil Bilgilerim" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,0,30"/>
             
-            <Border Background="#3d3d5c" CornerRadius="15" Padding="30">
-                <StackPanel x:Name="infoPanel"/>
+            <Border Background="#2d2d42" CornerRadius="15" Padding="30">
+                <StackPanel>
+                    <TextBlock Text="Kişisel Bilgiler" FontSize="18" FontWeight="SemiBold" Foreground="#a6a6c3" Margin="0,0,0,15"/>
+
+                    <!-- Ad Soyad -->
+                    <TextBlock Text="Ad Soyad" Foreground="#8b8b9e" FontSize="12" Margin="0,0,0,5"/>
+                    <TextBox x:Name="txtAdSoyad" Height="40" Background="#1e1e2e" Foreground="White" 
+                             BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                             FontSize="14" Margin="0,0,0,15" MaxLength="50">
+                        <TextBox.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <!-- Kullanıcı Adı (Read-Only olabilir ama düzenlenebilir yapalım) -->
+                    <TextBlock Text="Kullanıcı Adı" Foreground="#8b8b9e" FontSize="12" Margin="0,0,0,5"/>
+                    <TextBox x:Name="txtUsername" Height="40" Background="#1e1e2e" Foreground="White" 
+                             BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                             FontSize="14" Margin="0,0,0,15" MaxLength="20">
+                        <TextBox.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <!-- Email -->
+                    <TextBlock Text="Email" Foreground="#8b8b9e" FontSize="12" Margin="0,0,0,5"/>
+                    <TextBox x:Name="txtEmail" Height="40" Background="#1e1e2e" Foreground="White" 
+                             BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                             FontSize="14" Margin="0,0,0,15" MaxLength="100">
+                        <TextBox.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <!-- Telefon -->
+                    <TextBlock Text="Telefon" Foreground="#8b8b9e" FontSize="12" Margin="0,0,0,5"/>
+                    <TextBox x:Name="txtTelefon" Height="40" Background="#1e1e2e" Foreground="White" 
+                             BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                             FontSize="14" Margin="0,0,0,25" MaxLength="11">
+                        <TextBox.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <Separator Background="#3f3f5a" Margin="0,0,0,25"/>
+
+                    <TextBlock Text="Şifre Değiştir (İsteğe Bağlı)" FontSize="18" FontWeight="SemiBold" Foreground="#a6a6c3" Margin="0,0,0,15"/>
+
+                    <!-- Yeni Şifre -->
+                    <TextBlock Text="Yeni Şifre" Foreground="#8b8b9e" FontSize="12" Margin="0,0,0,5"/>
+                    <PasswordBox x:Name="txtNewPassword" Height="40" Background="#1e1e2e" Foreground="White" 
+                                 BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                                 FontSize="14" Margin="0,0,0,15" MaxLength="20">
+                        <PasswordBox.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </PasswordBox.Resources>
+                    </PasswordBox>
+                    
+                    <TextBlock Text="Yeni Şifre (Tekrar)" Foreground="#8b8b9e" FontSize="12" Margin="0,0,0,5"/>
+                    <PasswordBox x:Name="txtNewPasswordConfirm" Height="40" Background="#1e1e2e" Foreground="White" 
+                                 BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                                 FontSize="14" Margin="0,0,0,25" MaxLength="20">
+                        <PasswordBox.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </PasswordBox.Resources>
+                    </PasswordBox>
+
+                    <!-- Mevcut Şifre (Güvenlik İçin Zorunlu) -->
+                    <Border Background="#3b3b55" CornerRadius="8" Padding="15" Margin="0,0,0,20" BorderBrush="#ef4444" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="🔒 İşlemi onaylamak için mevcut şifrenizi girin:" Foreground="#f87171" FontSize="13" Margin="0,0,0,10"/>
+                            <PasswordBox x:Name="txtCurrentPassword" Height="40" Background="#1e1e2e" Foreground="White" 
+                                         BorderThickness="0" Padding="10,0" VerticalContentAlignment="Center"
+                                         FontSize="14" MaxLength="20">
+                                <PasswordBox.Resources>
+                                    <Style TargetType="{x:Type Border}">
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                    </Style>
+                                </PasswordBox.Resources>
+                            </PasswordBox>
+                        </StackPanel>
+                    </Border>
+
+                    <Button x:Name="btnKaydet" Content="Bilgileri Güncelle" Click="Kaydet_Click"
+                            Background="#3b82f6" Foreground="White" BorderThickness="0"
+                            Height="45" FontSize="15" FontWeight="SemiBold" Cursor="Hand">
+                        <Button.Resources>
+                            <Style TargetType="{x:Type Border}">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </StackPanel>
             </Border>
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </Page>

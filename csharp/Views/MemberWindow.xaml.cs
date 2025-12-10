@@ -12,6 +12,7 @@ namespace KutuphaneOtomasyon.Views
         public MemberWindow(int userId, string adSoyad)
         {
             InitializeComponent();
+            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
             _userId = userId;
             _adSoyad = adSoyad;
             txtUserName.Text = $"👤 {adSoyad}";

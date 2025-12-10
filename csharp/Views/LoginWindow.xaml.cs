@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 
 namespace KutuphaneOtomasyon.Views
 {
@@ -7,7 +8,16 @@ namespace KutuphaneOtomasyon.Views
         public LoginWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
             txtUsername.Focus();
+        }
+        
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                Login_Click(sender, e);
+            }
         }
         
         private void Login_Click(object sender, RoutedEventArgs e)

@@ -3,87 +3,369 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
       Title="Kitap Yönetimi"
-      Background="#1e1e2e">
+      Background="#0f0f1a">
     
-    <Grid Margin="25">
+    <Page.Resources>
+        <!-- Modern DataGrid Row Style -->
+        <Style x:Key="ModernRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2563eb"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1e3a5f"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Page.Resources>
+    
+    <Grid Margin="30">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <!-- Başlık -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
-            <TextBlock Text="📖 Kitap Yönetimi" FontSize="22" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
-            <Button Content="+ Yeni Kitap" Click="YeniKitap_Click" 
-                    Background="#27ae60" Foreground="White" BorderThickness="0"
-                    Margin="20,0,0,0" Height="36" Padding="16,0" FontSize="12"/>
-        </StackPanel>
-        
-        <!-- Arama -->
-        <Grid Grid.Row="1" Margin="0,0,0,15">
+        <!-- Başlık ve Butonlar -->
+        <Grid Grid.Row="0" Margin="0,0,0,25">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <TextBox x:Name="txtSearch" Grid.Column="0"
-                     Style="{StaticResource ModernTextBox}"
-                     materialDesign:HintAssist.Hint="Kitap adı veya yazar ara..."
-                     KeyDown="Search_KeyDown"/>
-            <Button Grid.Column="1" Content="Ara" Click="Search_Click"
-                    Background="#3498db" Foreground="White" BorderThickness="0"
-                    Margin="10,0,0,0" Height="45" Width="80" FontSize="13"/>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="📚 Kitap Yönetimi" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                <TextBlock Text="Kütüphanenizdeki tüm kitapları yönetin" FontSize="13" Foreground="#6b7280" Margin="0,5,0,0"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="btnTopluSil" Click="TopluSil_Click" Visibility="Collapsed"
+                        Content="🗑 Seçilenleri Sil" Margin="0,0,10,0"
+                        Background="#ef4444" Foreground="White" BorderThickness="0"
+                        Height="40" Padding="15,0" FontSize="13" FontWeight="SemiBold">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter x:Name="content" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.9"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <TextBlock x:Name="txtTopluSil" Text="" Foreground="#ef4444" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold" Visibility="Collapsed"/>
+                <Button Content="📥 Excel'den Al" Click="ExcelImport_Click" 
+                        Background="#059669" Foreground="White" BorderThickness="0"
+                        Height="40" Padding="18,0" FontSize="13" Margin="0,0,10,0">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="📤 Excel'e Aktar" Click="ExcelExport_Click" 
+                        Background="#0369a1" Foreground="White" BorderThickness="0"
+                        Height="40" Padding="18,0" FontSize="13" Margin="0,0,10,0">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="+ Yeni Kitap" Click="YeniKitap_Click" 
+                        Background="#2563eb" Foreground="White" BorderThickness="0"
+                        Height="40" Padding="20,0" FontSize="13" FontWeight="SemiBold">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </StackPanel>
         </Grid>
         
-        <!-- Tablo -->
-        <Border Grid.Row="2" Background="#252536" CornerRadius="8" Padding="1">
+        <!-- Arama ve Filtreler -->
+        <Border Grid.Row="1" Background="#1a1a2e" CornerRadius="12" Padding="20,15" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Modern Arama Kutusu -->
+                <Border Grid.Column="0" Background="#252540" CornerRadius="22" Height="45">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Text="🔍" Grid.Column="0" VerticalAlignment="Center" Margin="15,0,5,0" 
+                                   FontSize="16" Foreground="#8b8b9e"/>
+                        
+                        <TextBox x:Name="txtSearch" Grid.Column="1"
+                                 materialDesign:HintAssist.Hint="Kitap adı, yazar veya ISBN ara..."
+                                 materialDesign:HintAssist.Foreground="#666680"
+                                 Background="Transparent" BorderThickness="0"
+                                 Foreground="White" FontSize="14"
+                                 VerticalContentAlignment="Center" Padding="5,0,15,0"
+                                 Height="45" TextChanged="Search_TextChanged"
+                                 CaretBrush="#3b82f6"/>
+                    </Grid>
+                </Border>
+                
+                <!-- Tür Filtresi -->
+                <Border Grid.Column="1" Background="#252540" CornerRadius="22" Height="45" Margin="15,0,0,0">
+                    <ComboBox x:Name="cmbTur" Width="150"
+                              materialDesign:HintAssist.Hint="Tüm Türler"
+                              materialDesign:HintAssist.Foreground="#666680"
+                              Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                              Background="Transparent" Foreground="White" FontSize="13" BorderThickness="0"
+                              VerticalContentAlignment="Center" Padding="15,0"
+                              DisplayMemberPath="TurAdi" SelectedValuePath="TurID"
+                              SelectionChanged="Filter_SelectionChanged">
+                         <ComboBox.Resources>
+                             <SolidColorBrush x:Key="MaterialDesignPaper" Color="#252540"/>
+                         </ComboBox.Resources>
+                    </ComboBox>
+                </Border>
+
+                <!-- Stok Filtresi -->
+                <Border Grid.Column="2" Background="#252540" CornerRadius="22" Height="45" Margin="15,0,0,0">
+                    <ComboBox x:Name="cmbStok" Width="150"
+                              materialDesign:HintAssist.Hint="Stok Durumu"
+                              materialDesign:HintAssist.Foreground="#666680"
+                              Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                              Background="Transparent" Foreground="White" FontSize="13" BorderThickness="0"
+                              VerticalContentAlignment="Center" Padding="15,0"
+                              SelectionChanged="Filter_SelectionChanged">
+                        <ComboBox.Resources>
+                             <SolidColorBrush x:Key="MaterialDesignPaper" Color="#252540"/>
+                        </ComboBox.Resources>
+                        <ComboBoxItem Content="Tüm Stok" IsSelected="True"/>
+                        <ComboBoxItem Content="Stokta Var"/>
+                        <ComboBoxItem Content="Tükendi"/>
+                    </ComboBox>
+                </Border>
+            </Grid>
+        </Border>
+        
+        <!-- Sonuç Sayısı -->
+        <TextBlock Grid.Row="2" x:Name="txtSonuc" Text="0 kitap bulundu" 
+                   Foreground="#6b7280" FontSize="13" Margin="0,0,0,12"/>
+        
+        <!-- Modern Tablo -->
+        <Border Grid.Row="3" Background="#1a1a2e" CornerRadius="12" Padding="0">
             <DataGrid x:Name="dgKitaplar" AutoGenerateColumns="False"
-                      Background="#252536" Foreground="#c8c8d8"
-                      GridLinesVisibility="Horizontal"
+                      Background="Transparent" Foreground="#e5e7eb"
+                      GridLinesVisibility="None"
                       BorderThickness="0"
                       HeadersVisibility="Column"
                       CanUserAddRows="False"
-                      SelectionMode="Single"
+                      SelectionMode="Extended"
                       IsReadOnly="True"
-                      RowBackground="#252536"
-                      AlternatingRowBackground="#2a2a3e"
-                      FontSize="13">
+                      FontSize="13"
+                      RowHeaderWidth="0"
+                      Sorting="DataGrid_Sorting"
+                      MouseDoubleClick="DataGrid_DoubleClick"
+                      PreviewMouseLeftButtonUp="DataGrid_PreviewMouseLeftButtonUp">
+                
                 <DataGrid.ColumnHeaderStyle>
                     <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="#1e1e2e"/>
-                        <Setter Property="Foreground" Value="#8b8b9e"/>
-                        <Setter Property="Padding" Value="10,12"/>
+                        <Setter Property="Background" Value="#252540"/>
+                        <Setter Property="Foreground" Value="#9ca3af"/>
+                        <Setter Property="Padding" Value="15,14"/>
                         <Setter Property="FontWeight" Value="SemiBold"/>
                         <Setter Property="FontSize" Value="12"/>
                         <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Cursor" Value="Hand"/>
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
+
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource ModernRowStyle}">
+                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="DataGridRow_PreviewMouseLeftButtonDown"/>
+                        <EventSetter Event="PreviewMouseMove" Handler="DataGridRow_PreviewMouseMove"/>
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Style>
+                </DataGrid.RowStyle>
+
                 <DataGrid.CellStyle>
                     <Style TargetType="DataGridCell">
-                        <Setter Property="Padding" Value="10,8"/>
+                        <Setter Property="Padding" Value="15,12"/>
                         <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Foreground" Value="#c8c8d8"/>
+                        <Setter Property="Foreground" Value="#e5e7eb"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#1e3a8a"/> 
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </Style.Triggers>
                     </Style>
                 </DataGrid.CellStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="ID" Binding="{Binding KitapID}" Width="50"/>
+                    <DataGridTemplateColumn Width="60">
+                        <DataGridTemplateColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <CheckBox Click="HeaderCheckBox_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand">
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.HeaderTemplate>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand">
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="ID" Binding="{Binding KitapID}" Width="60"/>
                     <DataGridTextColumn Header="Kitap Adı" Binding="{Binding Baslik}" Width="*"/>
-                    <DataGridTextColumn Header="Yazar" Binding="{Binding Yazar}" Width="140"/>
-                    <DataGridTextColumn Header="ISBN" Binding="{Binding ISBN}" Width="110"/>
-                    <DataGridTextColumn Header="Tür" Binding="{Binding TurAdi}" Width="90"/>
-                    <DataGridTextColumn Header="Stok" Binding="{Binding StokAdedi}" Width="50"/>
-                    <DataGridTextColumn Header="Mevcut" Binding="{Binding MevcutAdet}" Width="60"/>
-                    <DataGridTemplateColumn Header="İşlem" Width="100">
+                    
+                    <!-- Yazar sütunu sadeleştirildi (Global stil geçerli) -->
+                    <DataGridTemplateColumn Header="Yazar" Width="150" SortMemberPath="Yazar">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Yazar}" VerticalAlignment="Center" 
+                                           TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Tür" Binding="{Binding TurAdi}" Width="100"/>
+
+                    <DataGridTextColumn Header="Stok" Binding="{Binding StokAdedi}" Width="55">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Mevcut" Binding="{Binding MevcutAdet}" Width="65">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTemplateColumn Header="İşlemler" Width="130">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="✏️" Click="Duzenle_Click" 
-                                            ToolTip="Düzenle" Width="35" Height="28" 
-                                            Background="#3498db" BorderThickness="0" Margin="0,0,5,0"/>
-                                    <Button Content="🗑️" Click="Sil_Click" 
-                                            ToolTip="Sil" Width="35" Height="28"
-                                            Background="#e74c3c" BorderThickness="0"/>
+                                    <Button Content="👁" Click="Detay_Click" ToolTip="Detay Görüntüle"
+                                            Width="32" Height="28" FontSize="12"
+                                            Background="#6366f1" Foreground="White" BorderThickness="0" Margin="0,0,4,0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="✏" Click="Duzenle_Click" ToolTip="Düzenle"
+                                            Width="32" Height="28" FontSize="12"
+                                            Background="#0ea5e9" Foreground="White" BorderThickness="0" Margin="0,0,4,0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="🗑" Click="Sil_Click" ToolTip="Sil"
+                                            Width="32" Height="28" FontSize="12"
+                                            Background="#ef4444" Foreground="White" BorderThickness="0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

@@ -8,6 +8,7 @@ namespace KutuphaneOtomasyon.Views
         public ForgotPasswordWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
         }
         
         private void Reset_Click(object sender, RoutedEventArgs e)

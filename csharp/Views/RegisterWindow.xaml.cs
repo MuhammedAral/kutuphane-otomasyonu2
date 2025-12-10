@@ -8,6 +8,7 @@ namespace KutuphaneOtomasyon.Views
         public RegisterWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
         }
         
         private void Register_Click(object sender, RoutedEventArgs e)
@@ -27,6 +28,12 @@ namespace KutuphaneOtomasyon.Views
             if (password.Length < 6)
             {
                 MessageBox.Show("Şifre en az 6 karakter olmalıdır!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(telefon) && telefon.Length != 11)
+            {
+                MessageBox.Show("Telefon numarası 11 haneli olmalıdır (05XXXXXXXXX)!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             

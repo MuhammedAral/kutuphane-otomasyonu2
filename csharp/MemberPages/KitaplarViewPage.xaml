@@ -14,18 +14,48 @@
         
         <TextBlock Text="📚 Kütüphanedeki Kitaplar" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,0,20"/>
         
-        <Grid Grid.Row="1" Margin="0,0,0,15">
+        <Grid Grid.Row="1" Margin="0,0,0,25">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <TextBox x:Name="txtSearch" Grid.Column="0"
-                     materialDesign:HintAssist.Hint="Kitap adı veya yazar ara..."
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                     Height="45" KeyDown="Search_KeyDown"/>
+            <!-- Modern Arama Çubuğu -->
+            <Border Grid.Column="0" Background="#2d2d42" CornerRadius="22" Height="45" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="🔍" Grid.Column="0" VerticalAlignment="Center" Margin="15,0,5,0" 
+                               FontSize="16" Foreground="#8b8b9e"/>
+                    
+                    <TextBox x:Name="txtSearch" Grid.Column="1"
+                             materialDesign:HintAssist.Hint="Kitap adı, yazar veya tür ara..."
+                             materialDesign:HintAssist.Foreground="#555570"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="White" FontSize="14"
+                             VerticalContentAlignment="Center" Padding="5,0,15,0"
+                             Height="45" KeyDown="Search_KeyDown"
+                             CaretBrush="#3b82f6"/>
+                </Grid>
+                <Border.Effect>
+                    <DropShadowEffect Color="Black" BlurRadius="10" Opacity="0.1" ShadowDepth="2"/>
+                </Border.Effect>
+            </Border>
+            
+            <!-- Ara Butonu -->
             <Button Grid.Column="1" Content="Ara" Click="Search_Click"
-                    Margin="10,0,0,0" Height="45" Width="100"/>
+                    Margin="15,0,0,0" Height="45" Width="100"
+                    Background="#3b82f6" Foreground="White" BorderThickness="0"
+                    FontSize="14" FontWeight="SemiBold" Cursor="Hand">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="22"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
         </Grid>
         
         <Border Grid.Row="2" Background="#1f1f1f" CornerRadius="10">

@@ -3,19 +3,20 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="Kütüphane Sistemi - Yönetici Paneli"
-        Height="800" Width="1400"
-        MinHeight="700" MinWidth="1200"
+        Height="700" Width="1200"
+        MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
-        Background="#1e1e2e">
+        Background="#1e1e2e"
+        Icon="/Assets/logo.png">
     
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="250"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         
-        <!-- Sidebar -->
-        <Border Grid.Column="0" Background="#252536">
+        <!-- Sidebar: MemberWindow ile AYNI -->
+        <Border Grid.Column="0" Background="#1a1a2e">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -23,45 +24,48 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 
-                <!-- Logo ve Başlık -->
-                <StackPanel Grid.Row="0" Margin="20,25,20,15">
-                    <TextBlock Text="📚" FontSize="40" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                    <TextBlock Text="Kütüphane Sistemi" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
-                    <TextBlock x:Name="txtAdminName" FontSize="11" Foreground="#8b8b9e" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                    <Border Height="1" Background="#3a3a4e" Margin="0,15,0,0"/>
+                <!-- Profil / Başlık Kısmı -->
+                <StackPanel Grid.Row="0" Margin="20,30,20,20">
+                    <TextBlock x:Name="txtAdminName" Text="Admin" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Yönetici Paneli" FontSize="11" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    <Border Height="1" Background="#2d2d44" Margin="0,20,0,0"/>
                 </StackPanel>
                 
-                <!-- Menü -->
-                <StackPanel Grid.Row="1" Margin="12,5,12,0">
-                    <TextBlock Text="MENÜ" FontSize="10" FontWeight="Bold" Foreground="#6b6b7e" Margin="8,0,0,8"/>
+                <!-- Menü Butonları -->
+                <StackPanel Grid.Row="1" Margin="15,10,15,0">
                     
-                    <Button x:Name="btnKitaplar" Content="📖  Kitap Yönetimi" Click="Kitaplar_Click"
-                            Height="42" HorizontalContentAlignment="Left" Padding="12,0"
-                            Background="Transparent" Foreground="#c8c8d8" BorderThickness="0"
-                            FontSize="13"/>
+                    <Button x:Name="btnKitaplar" Content="📚  Kitap Yönetimi" Click="Kitaplar_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
                     
                     <Button x:Name="btnUyeler" Content="👥  Üye Yönetimi" Click="Uyeler_Click"
-                            Height="42" HorizontalContentAlignment="Left" Padding="12,0"
-                            Background="Transparent" Foreground="#c8c8d8" BorderThickness="0"
-                            FontSize="13"/>
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
                     
                     <Button x:Name="btnOdunc" Content="🔄  Ödünç İşlemleri" Click="Odunc_Click"
-                            Height="42" HorizontalContentAlignment="Left" Padding="12,0"
-                            Background="Transparent" Foreground="#c8c8d8" BorderThickness="0"
-                            FontSize="13"/>
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
+                    
+                    <Separator Background="#2d2d44" Margin="0,10"/>
+                    
+                    <Button x:Name="btnRaporlar" Content="📊  Raporlar" Click="Raporlar_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
+
+                    <Button x:Name="btnAyarlar" Content="⚙️  Ayarlar" Click="Ayarlar_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
                 </StackPanel>
                 
-                <!-- Çıkış -->
-                <StackPanel Grid.Row="2" Margin="12,0,12,15">
-                    <Button Content="🚪  Çıkış Yap" Click="Logout_Click"
-                            Background="#e74c3c" Foreground="White" BorderThickness="0"
-                            Height="40" FontSize="13"/>
-                </StackPanel>
+                <!-- Çıkış Butonu -->
+                <Button Grid.Row="2" Content="🚪  Çıkış Yap" Click="Logout_Click"
+                        Background="#dc2626" Foreground="White"
+                        Height="45" Margin="15,0,15,20" Style="{StaticResource MaterialDesignRaisedButton}"/>
             </Grid>
         </Border>
         
-        <!-- Ana İçerik -->
-        <Border Grid.Column="1" Margin="0" Background="#1e1e2e">
+        <!-- İçerik Alanı: MemberWindow ile AYNI -->
+        <Border Grid.Column="1" Margin="15" CornerRadius="15" Background="#2d2d44">
             <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
         </Border>
     </Grid>

@@ -8,6 +8,7 @@ namespace KutuphaneOtomasyon.Pages
         public UyeDialog()
         {
             InitializeComponent();
+            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
         }
         
         private void Kaydet_Click(object sender, RoutedEventArgs e)
@@ -17,6 +18,19 @@ namespace KutuphaneOtomasyon.Pages
                 string.IsNullOrWhiteSpace(txtPassword.Password))
             {
                 MessageBox.Show("Lütfen zorunlu alanları doldurun!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (txtPassword.Password.Length < 6)
+            {
+                MessageBox.Show("Şifre en az 6 karakter olmalıdır!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string telefon = txtTelefon.Text.Trim();
+            if (!string.IsNullOrEmpty(telefon) && telefon.Length != 11)
+            {
+                MessageBox.Show("Telefon numarası 11 haneli olmalıdır (05XXXXXXXXX)!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             
