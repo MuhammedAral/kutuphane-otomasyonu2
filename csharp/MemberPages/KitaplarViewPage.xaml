@@ -1,0 +1,45 @@
+<Page x:Class="KutuphaneOtomasyon.MemberPages.KitaplarViewPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+      Title="Kitaplar"
+      Background="Transparent">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Text="📚 Kütüphanedeki Kitaplar" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,0,20"/>
+        
+        <Grid Grid.Row="1" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBox x:Name="txtSearch" Grid.Column="0"
+                     materialDesign:HintAssist.Hint="Kitap adı veya yazar ara..."
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     Height="45" KeyDown="Search_KeyDown"/>
+            <Button Grid.Column="1" Content="Ara" Click="Search_Click"
+                    Margin="10,0,0,0" Height="45" Width="100"/>
+        </Grid>
+        
+        <Border Grid.Row="2" Background="#1f1f1f" CornerRadius="10">
+            <DataGrid x:Name="dgKitaplar" AutoGenerateColumns="False"
+                      Background="Transparent" Foreground="White"
+                      CanUserAddRows="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding KitapID}" Width="50"/>
+                    <DataGridTextColumn Header="Kitap Adı" Binding="{Binding Baslik}" Width="*"/>
+                    <DataGridTextColumn Header="Yazar" Binding="{Binding Yazar}" Width="180"/>
+                    <DataGridTextColumn Header="Tür" Binding="{Binding TurAdi}" Width="100"/>
+                    <DataGridTextColumn Header="Mevcut" Binding="{Binding MevcutText}" Width="80"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</Page>

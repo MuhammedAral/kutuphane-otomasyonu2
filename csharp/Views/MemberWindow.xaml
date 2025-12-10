@@ -1,0 +1,61 @@
+<Window x:Class="KutuphaneOtomasyon.Views.MemberWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Kütüphane Sistemi - Üye Paneli"
+        Height="700" Width="1200"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="#1e1e2e">
+    
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="#1a1a2e">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <StackPanel Grid.Row="0" Margin="20,30,20,20">
+                    <TextBlock x:Name="txtUserName" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Kütüphane Üyesi" FontSize="11" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    <Border Height="1" Background="#2d2d44" Margin="0,20,0,0"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Row="1" Margin="15,10,15,0">
+                    <Button x:Name="btnAnasayfa" Content="🏠  Ana Sayfa" Click="Anasayfa_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
+                    
+                    <Button x:Name="btnKitaplar" Content="📚  Kitaplar" Click="Kitaplar_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
+                    
+                    <Button x:Name="btnOdunclerim" Content="📖  Ödünç Aldıklarım" Click="Odunclerim_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
+                    
+                    <Button x:Name="btnProfil" Content="⚙️  Profilim" Click="Profil_Click"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
+                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
+                </StackPanel>
+                
+                <Button Grid.Row="2" Content="🚪  Çıkış Yap" Click="Logout_Click"
+                        Background="#dc2626" Foreground="White"
+                        Height="45" Margin="15,0,15,20" Style="{StaticResource MaterialDesignRaisedButton}"/>
+            </Grid>
+        </Border>
+        
+        <!-- İçerik -->
+        <Border Grid.Column="1" Margin="15" CornerRadius="15" Background="#2d2d44">
+            <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
+        </Border>
+    </Grid>
+</Window>

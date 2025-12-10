@@ -1,0 +1,64 @@
+<Window x:Class="KutuphaneOtomasyon.Views.RegisterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Yeni Üye Kaydı"
+        Height="600" Width="450"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#1a1a2e">
+    
+    <Grid>
+        <StackPanel VerticalAlignment="Center" Margin="40">
+            
+            <TextBlock Text="📝 Yeni Üye Kaydı" 
+                       FontSize="24" FontWeight="Bold" 
+                       Foreground="White" 
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="Kütüphane üyesi olmak için bilgilerinizi girin" 
+                       FontSize="12" 
+                       Foreground="#9ca3af" 
+                       HorizontalAlignment="Center" 
+                       Margin="0,5,0,25"/>
+            
+            <Border Background="#2d2d44" CornerRadius="20" Padding="25">
+                <StackPanel>
+                    
+                    <TextBlock Text="Ad Soyad *" FontSize="11" FontWeight="SemiBold" Foreground="#d1d5db"/>
+                    <TextBox x:Name="txtAdSoyad" Style="{StaticResource ModernTextBox}"
+                             materialDesign:HintAssist.Hint="Adınız ve soyadınız"/>
+                    
+                    <TextBlock Text="Email" FontSize="11" FontWeight="SemiBold" Foreground="#d1d5db"/>
+                    <TextBox x:Name="txtEmail" Style="{StaticResource ModernTextBox}"
+                             materialDesign:HintAssist.Hint="ornek@email.com"/>
+                    
+                    <TextBlock Text="Telefon" FontSize="11" FontWeight="SemiBold" Foreground="#d1d5db"/>
+                    <TextBox x:Name="txtTelefon" Style="{StaticResource ModernTextBox}"
+                             materialDesign:HintAssist.Hint="05XX XXX XX XX"/>
+                    
+                    <TextBlock Text="Kullanıcı Adı *" FontSize="11" FontWeight="SemiBold" Foreground="#d1d5db"/>
+                    <TextBox x:Name="txtUsername" Style="{StaticResource ModernTextBox}"
+                             materialDesign:HintAssist.Hint="Giriş için kullanacağınız isim"/>
+                    
+                    <TextBlock Text="Şifre *" FontSize="11" FontWeight="SemiBold" Foreground="#d1d5db"/>
+                    <PasswordBox x:Name="txtPassword" Style="{StaticResource ModernPasswordBox}"
+                                 materialDesign:HintAssist.Hint="En az 6 karakter"/>
+                    
+                    <Button x:Name="btnRegister" 
+                            Content="Kayıt Ol" 
+                            Click="Register_Click"
+                            Style="{StaticResource ModernButton}"
+                            Background="#10b981"/>
+                </StackPanel>
+            </Border>
+            
+            <Button Content="← Giriş Ekranına Dön" 
+                    Click="Back_Click"
+                    HorizontalAlignment="Center"
+                    Background="Transparent"
+                    Foreground="#60a5fa"
+                    BorderThickness="0"
+                    Margin="0,15,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

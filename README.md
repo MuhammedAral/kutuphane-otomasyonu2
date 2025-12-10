@@ -1,90 +1,145 @@
 # 📚 Kütüphane Otomasyon Sistemi
 
-Merhaba! Bu proje, kütüphanelerin günlük işlerini kolaylaştırmak için geliştirilmiş bir yazılım. Kitap takibi, üye yönetimi ve ödünç işlemleri gibi temel ihtiyaçları karşılıyor.
+Merhaba! Bu proje, kütüphanelerin günlük işlerini kolaylaştırmak için geliştirilmiş kapsamlı bir yazılım sistemidir. WPF masaüstü uygulaması ve REST API içerir.
 
-## Ne İşe Yarar?
+## 🚀 Özellikler
 
-Bir kütüphane düşünün: Raflarınızda yüzlerce kitap var, onlarca üyeniz kitap alıp iade ediyor. Bunların hepsini kağıt kalemle takip etmek hem zor hem de hata yapma riski yüksek. İşte bu uygulama tam da bu sorunu çözüyor.
+### 👤 Kullanıcı Sistemi
+- **Yönetici Paneli:** Tüm işlemlere erişim
+- **Üye Paneli:** Kitap görüntüleme ve kişisel ödünç takibi
+- Güvenli giriş sistemi (SHA256 şifreleme)
+- Şifremi unuttum özelliği
 
-**Masaüstü uygulaması** ile bilgisayarınızdan tüm işlemleri yapabilirsiniz. Ayrıca **REST API** sayesinde ileride mobil uygulama veya web sitesi de ekleyebilirsiniz.
+### 📖 Kitap İşlemleri
+- Yeni kitap ekleme
+- Kitap düzenleme ve silme
+- Kitap türü yönetimi
+- Stok takibi
 
-## Neler Yapabilirsiniz?
+### 👥 Üye İşlemleri
+- Yeni üye kaydı
+- Üye bilgilerini güncelleme
+- Üyeleri aktif/pasif yapma
 
-### Kitap İşlemleri
-- Yeni kitap ekleyebilirsiniz
-- Mevcut kitapları düzenleyebilir veya silebilirsiniz
-- Barkod okuyucu ile hızlıca kitap tarayabilirsiniz
-- Excel dosyasından toplu kitap aktarabilirsiniz
+### 📋 Ödünç İşlemleri
+- Kitap ödünç verme
+- İade alma
+- Geciken kitapları takip etme
 
-### Üye İşlemleri
-- Yeni üye kaydı oluşturabilirsiniz
-- Üye bilgilerini güncelleyebilirsiniz
-- Hangi üyede hangi kitap var görebilirsiniz
+### 🌐 REST API
+- Kitaplar CRUD işlemleri
+- Üyeler CRUD işlemleri
+- Ödünç işlemleri
+- İstatistikler
+- Swagger UI dokümantasyonu
 
-### Ödünç İşlemleri
-- Kitap ödünç verebilirsiniz
-- İade alabilirsiniz
-- Geciken kitapları takip edebilirsiniz
+## 🛠️ Teknolojiler
 
-## Nasıl Kurulur?
+| Bileşen | Teknoloji |
+|---------|-----------|
+| Masaüstü App | .NET 8.0 WPF + Material Design |
+| REST API | ASP.NET Core 8.0 Minimal API |
+| Veritabanı | Microsoft SQL Server |
+| Container | Docker |
 
-### 1. Öncelikle Docker'ı başlatın
-Veritabanı için SQL Server kullanıyoruz. Docker ile çok kolay:
+## ⚙️ Kurulum
 
+### 1. SQL Server Kurulumu (Docker)
+
+```bash
+docker-compose up -d
+```
+
+veya manuel:
 ```bash
 docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Password123" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-### 2. Masaüstü uygulamasını çalıştırın
+### 2. Masaüstü Uygulamasını Çalıştırma
+
 ```bash
-cd desktop
-pip install -r requirements.txt
-python main.py
+cd csharp
+dotnet restore
+dotnet run
 ```
 
-### 3. API'yi başlatın (isteğe bağlı)
+### 3. REST API'yi Çalıştırma
+
 ```bash
 cd api
-pip install -r requirements.txt
-uvicorn main:app --reload
+dotnet restore
+dotnet run
 ```
 
-## Giriş Bilgileri
+API Swagger UI: **http://localhost:5000/swagger**
 
-İlk açılışta kullanabileceğiniz hazır bir yönetici hesabı var:
+## 🔐 Varsayılan Giriş Bilgileri
 
-- **Kullanıcı adı:** admin
-- **Şifre:** admin123
+| Kullanıcı Adı | Şifre | Rol |
+|---------------|-------|-----|
+| admin | admin123 | Yönetici |
 
-## API Kullanımı
+⚠️ **Önemli:** Üretime almadan önce admin şifresini değiştirmeyi unutmayın!
 
-API'yi başlattıktan sonra tarayıcınızda şu adresi açın:
+## 📡 API Endpoints
 
-👉 http://localhost:8000/docs
+### Kitaplar
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/kitaplar` | Tüm kitapları listele |
+| GET | `/api/kitaplar/{id}` | Kitap detayı |
+| POST | `/api/kitaplar` | Yeni kitap ekle |
+| PUT | `/api/kitaplar/{id}` | Kitap güncelle |
+| DELETE | `/api/kitaplar/{id}` | Kitap sil |
 
-Burada tüm API endpoint'lerini görebilir ve test edebilirsiniz.
+### Üyeler
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/uyeler` | Tüm üyeleri listele |
+| GET | `/api/uyeler/{id}` | Üye detayı |
 
-## Proje Yapısı
+### Ödünç İşlemleri
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/odunc` | Tüm işlemleri listele |
+| POST | `/api/odunc` | Yeni ödünç ver |
+| PUT | `/api/odunc/{id}/iade` | İade al |
+
+### Diğer
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/turler` | Kitap türleri |
+| GET | `/api/istatistikler` | Dashboard istatistikleri |
+
+## 📁 Proje Yapısı
 
 ```
 📁 kutuphane-otomasyonu
-├── 📁 desktop          → Masaüstü uygulaması
-│   ├── main.py         → Ana uygulama dosyası
-│   ├── database.py     → Veritabanı işlemleri
-│   └── assets          → Logo ve görseller
-├── 📁 api              → REST API
-│   └── main.py         → API endpoint'leri
-└── README.md           → Bu dosya
+├── 📁 csharp                → WPF Masaüstü Uygulaması
+│   ├── 📁 Views             → Giriş pencereleri
+│   ├── 📁 Pages             → Yönetici panel sayfaları
+│   ├── 📁 MemberPages       → Üye panel sayfaları
+│   ├── 📁 Assets            → Logo ve görseller
+│   ├── DatabaseHelper.cs    → Veritabanı işlemleri
+│   └── App.xaml             → Uygulama başlangıç dosyası
+├── 📁 api                   → ASP.NET Core REST API
+│   └── Program.cs           → Minimal API endpoint'leri
+├── docker-compose.yml       → SQL Server Docker yapılandırması
+└── README.md                → Bu dosya
 ```
 
-## Yardım ve Destek
+## 🤝 Katkıda Bulunma
 
-Bir sorunla karşılaşırsanız veya öneriniz varsa GitHub üzerinden issue açabilirsiniz.
+1. Projeyi fork edin
+2. Feature branch oluşturun (`git checkout -b feature/yeni-ozellik`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Yeni özellik eklendi'`)
+4. Branch'i push edin (`git push origin feature/yeni-ozellik`)
+5. Pull Request açın
 
-## Lisans
+## 📄 Lisans
 
 Bu proje açık kaynaklıdır ve özgürce kullanabilirsiniz.
 
 ---
 
-Proje hakkında sorularınız varsa bana ulaşabilirsiniz. İyi kullanımlar! ✨
+Proje hakkında sorularınız varsa GitHub Issues üzerinden ulaşabilirsiniz. İyi kullanımlar! ✨

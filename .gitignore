@@ -1,13 +1,18 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-ENV/
+# C# / .NET
+bin/
+obj/
+*.user
+*.userosscache
+*.suo
+*.cache
+*.dll
+*.pdb
+*.exe
+
+# Visual Studio
+.vs/
+*.vshost.*
+launchSettings.json
 
 # IDE
 .vscode/
@@ -18,6 +23,8 @@ ENV/
 # Veritabanı
 *.db
 *.sqlite
+*.mdf
+*.ldf
 
 # Logs
 *.log
@@ -27,6 +34,10 @@ ENV/
 Thumbs.db
 desktop.ini
 
+# Paketler
+packages/
+*.nupkg
+
 # Gizli dosyalar
 .env
-*.ico
+appsettings.Development.json

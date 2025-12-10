@@ -1,0 +1,29 @@
+<Page x:Class="KutuphaneOtomasyon.MemberPages.OdunclerimPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Ödünç Aldıklarım"
+      Background="Transparent">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Text="📖 Ödünç Aldığım Kitaplar" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,0,20"/>
+        
+        <Border Grid.Row="1" Background="#1f1f1f" CornerRadius="10">
+            <DataGrid x:Name="dgOdunc" AutoGenerateColumns="False"
+                      Background="Transparent" Foreground="White"
+                      CanUserAddRows="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Kitap" Binding="{Binding Baslik}" Width="*"/>
+                    <DataGridTextColumn Header="Ödünç Tarihi" Binding="{Binding OduncTarihi, StringFormat=dd/MM/yyyy}" Width="120"/>
+                    <DataGridTextColumn Header="İade Tarihi" Binding="{Binding BeklenenIadeTarihi, StringFormat=dd/MM/yyyy}" Width="120"/>
+                    <DataGridTextColumn Header="Durum" Binding="{Binding DurumText}" Width="120"/>
+                    <DataGridTextColumn Header="Gecikme" Binding="{Binding Gecikme}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</Page>

@@ -1,0 +1,40 @@
+<Window x:Class="KutuphaneOtomasyon.Pages.UyeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Yeni Üye Ekle"
+        Height="420" Width="420"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#1e1e2e">
+    
+    <Grid Margin="25">
+        <StackPanel>
+            <TextBlock Text="👥 Yeni Üye Ekle" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,20"/>
+            
+            <TextBlock Text="Ad Soyad *" Foreground="#8b8b9e" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBox x:Name="txtAdSoyad" Style="{StaticResource ModernTextBox}"/>
+            
+            <TextBlock Text="Kullanıcı Adı *" Foreground="#8b8b9e" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBox x:Name="txtUsername" Style="{StaticResource ModernTextBox}"/>
+            
+            <TextBlock Text="Şifre *" Foreground="#8b8b9e" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <PasswordBox x:Name="txtPassword" Style="{StaticResource ModernPasswordBox}"/>
+            
+            <TextBlock Text="Email" Foreground="#8b8b9e" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBox x:Name="txtEmail" Style="{StaticResource ModernTextBox}"/>
+            
+            <TextBlock Text="Telefon" Foreground="#8b8b9e" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBox x:Name="txtTelefon" Style="{StaticResource ModernTextBox}"/>
+            
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                <Button Content="İptal" Click="Iptal_Click" 
+                        Background="#6b6b7e" Foreground="White" BorderThickness="0"
+                        Width="90" Height="38" FontSize="13" Margin="0,0,10,0"/>
+                <Button Content="Kaydet" Click="Kaydet_Click" 
+                        Background="#27ae60" Foreground="White" BorderThickness="0"
+                        Width="90" Height="38" FontSize="13"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>
