@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using KutuphaneApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +71,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddTransient<IEmailService, EmailService>();
 
 var app = builder.Build();
 
@@ -108,7 +110,35 @@ string HashPassword(string password)
     return Convert.ToHexString(bytes).ToLower();
 }
 
-// ==================== GİRİŞ API (TOKEN ALMA) ====================
+
+
+// Uygulama Başlarken Tabloyu Kontrol Et
+using (var scope = app.Services.CreateScope())
+{
+    try 
+    {
+        using var conn = new SqlConnection(connectionString);
+        conn.Open();
+        var tableCmd = new SqlCommand(@"
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='SifreSifirlamaIslemleri' and xtype='U')
+            BEGIN
+                CREATE TABLE SifreSifirlamaIslemleri (
+                    IslemID INT PRIMARY KEY IDENTITY(1,1),
+                    KullaniciID INT NOT NULL,
+                    Kod NVARCHAR(10) NOT NULL,
+                    OlusturmaTarihi DATETIME DEFAULT GETDATE(),
+                    SonKullanmaTarihi DATETIME NOT NULL,
+                    KullanildiMi BIT DEFAULT 0,
+                    FOREIGN KEY (KullaniciID) REFERENCES Kullanicilar(KullaniciID)
+                )
+            END", conn);
+        tableCmd.ExecuteNonQuery();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Tablo oluşturma hatası: " + ex.Message);
+    }
+}
 
 app.MapPost("/api/giris", (LoginRequest request) =>
 {
@@ -154,7 +184,112 @@ app.MapPost("/api/giris", (LoginRequest request) =>
 })
 .WithName("GirisYap")
 .WithTags("Giriş")
-.AllowAnonymous(); // Giriş herkese açık olmalı
+
+.AllowAnonymous();
+
+// ==================== ŞİFRE SIFIRLAMA API ====================
+
+app.MapPost("/api/auth/sifremi-unuttum", async (ForgotPasswordRequest request, IEmailService emailService) =>
+{
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    // 1. Kullanıcı var mı kontrol et
+    var cmd = new SqlCommand("SELECT KullaniciID, AdSoyad FROM Kullanicilar WHERE Email = @email AND AktifMi = 1", conn);
+    cmd.Parameters.AddWithValue("@email", request.Email);
+    
+    int? userId = null;
+    string adSoyad = "";
+    
+    using (var reader = await cmd.ExecuteReaderAsync())
+    {
+        if (reader.Read())
+        {
+            userId = reader.GetInt32(0);
+            adSoyad = reader.GetString(1);
+        }
+    }
+
+    if (userId == null)
+        return Results.NotFound(new { message = "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı." });
+
+    // 2. Rastgele Kod Oluştur (6 haneli)
+    var random = new Random();
+    var kod = random.Next(100000, 999999).ToString();
+    var sonKullanma = DateTime.Now.AddMinutes(15); // 15 dakika geçerli
+
+    // 3. Kodu DB'ye kaydet
+    var insertCmd = new SqlCommand(@"
+        INSERT INTO SifreSifirlamaIslemleri (KullaniciID, Kod, SonKullanmaTarihi, KullanildiMi)
+        VALUES (@uid, @kod, @skk, 0)", conn);
+    insertCmd.Parameters.AddWithValue("@uid", userId);
+    insertCmd.Parameters.AddWithValue("@kod", kod);
+    insertCmd.Parameters.AddWithValue("@skk", sonKullanma);
+    await insertCmd.ExecuteNonQueryAsync();
+
+    // 4. Mail Gönder
+    try
+    {
+        await emailService.SendEmailAsync(request.Email, "Şifre Sıfırlama Kodu", 
+            $"Sayın {adSoyad},<br><br>Şifre sıfırlama talebiniz alınmıştır.<br>Doğrulama Kodunuz: <b>{kod}</b><br><br>Bu kod 15 dakika geçerlidir.");
+        return Results.Ok(new { message = "Doğrulama kodu e-posta adresinize gönderildi." });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Email gönderilemedi: {ex.Message}");
+    }
+})
+.WithName("SifremiUnuttum")
+.WithTags("Giriş")
+.AllowAnonymous();
+
+app.MapPost("/api/auth/sifre-sifirla", async (ResetPasswordRequest request) =>
+{
+    if (request.YeniSifre.Length < 6)
+        return Results.BadRequest(new { message = "Şifre en az 6 karakter olmalıdır." });
+
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    // 1. Kodu doğrula
+    var cmd = new SqlCommand(@"
+        SELECT TOP 1 IslemID, KullaniciID FROM SifreSifirlamaIslemleri 
+        WHERE Kod = @kod AND KullanildiMi = 0 AND SonKullanmaTarihi > GETDATE()
+        ORDER BY IslemID DESC", conn);
+    cmd.Parameters.AddWithValue("@kod", request.Kod);
+
+    int islemId = 0;
+    int userId = 0;
+
+    using (var reader = await cmd.ExecuteReaderAsync())
+    {
+        if (reader.Read())
+        {
+            islemId = reader.GetInt32(0);
+            userId = reader.GetInt32(1);
+        }
+    }
+
+    if (islemId == 0)
+        return Results.BadRequest(new { message = "Geçersiz veya süresi dolmuş kod." });
+
+    // 2. Şifreyi Güncelle
+    var hash = HashPassword(request.YeniSifre);
+    var updateCmd = new SqlCommand("UPDATE Kullanicilar SET Sifre = @pass WHERE KullaniciID = @uid", conn);
+    updateCmd.Parameters.AddWithValue("@pass", hash);
+    updateCmd.Parameters.AddWithValue("@uid", userId);
+    await updateCmd.ExecuteNonQueryAsync();
+
+    // 3. Kodu kullanıldı olarak işaretle
+    var expireCmd = new SqlCommand("UPDATE SifreSifirlamaIslemleri SET KullanildiMi = 1 WHERE IslemID = @iid", conn);
+    expireCmd.Parameters.AddWithValue("@iid", islemId);
+    await expireCmd.ExecuteNonQueryAsync();
+
+    return Results.Ok(new { message = "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });
+})
+.WithName("SifreSifirla")
+.WithTags("Giriş")
+.AllowAnonymous();
 
 // ==================== KİTAPLAR API ====================
 
@@ -384,11 +519,26 @@ app.MapGet("/api/odunc", () =>
 .WithTags("Ödünç İşlemleri")
 .RequireAuthorization();
 
-app.MapPost("/api/odunc", (OduncRequest request) =>
+app.MapPost("/api/odunc", async (OduncRequest request, IEmailService emailService) =>
 {
     using var conn = new SqlConnection(connectionString);
     conn.Open();
+
+    // Kullanıcı bilgisi ve email kontrolü
+    string? emailAdresi = null;
+    string adSoyad = "";
     
+    using (var userCmd = new SqlCommand("SELECT Email, AdSoyad FROM Kullanicilar WHERE KullaniciID = @uye", conn))
+    {
+        userCmd.Parameters.AddWithValue("@uye", request.UyeID);
+        using var reader = await userCmd.ExecuteReaderAsync();
+        if (reader.Read())
+        {
+            emailAdresi = reader.IsDBNull(0) ? null : reader.GetString(0);
+            adSoyad = reader.GetString(1);
+        }
+    } // Reader kapatıldı
+
     var cmd = new SqlCommand(@"
         INSERT INTO OduncIslemleri (KitapID, UyeID, BeklenenIadeTarihi) 
         OUTPUT INSERTED.IslemID
@@ -399,7 +549,30 @@ app.MapPost("/api/odunc", (OduncRequest request) =>
     cmd.Parameters.AddWithValue("@uye", request.UyeID);
     cmd.Parameters.AddWithValue("@gun", request.OduncGunu ?? 14);
     
-    var id = cmd.ExecuteScalar();
+    var id = await cmd.ExecuteScalarAsync();
+
+    // Email Gönderimi
+    if (!string.IsNullOrEmpty(emailAdresi))
+    {
+        try 
+        {
+            string kitapAdi = "";
+            using (var kCmd = new SqlCommand("SELECT Baslik FROM Kitaplar WHERE KitapID = @id", conn))
+            {
+                kCmd.Parameters.AddWithValue("@id", request.KitapID);
+                var result = await kCmd.ExecuteScalarAsync();
+                if (result != null) kitapAdi = result.ToString()!;
+            }
+
+            await emailService.SendEmailAsync(emailAdresi, "Kitap Ödünç Alma Bildirimi", 
+                $"Sayın {adSoyad},<br><br>'{kitapAdi}' adlı kitabı kütüphanemizden ödünç aldınız.<br>İade tarihiniz: {DateTime.Now.AddDays(request.OduncGunu ?? 14):dd.MM.yyyy}.<br><br>İyi okumalar!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Email gönderme hatası: {ex.Message}");
+        }
+    }
+
     return Results.Created($"/api/odunc/{id}", new { IslemID = id, message = "Ödünç verildi" });
 })
 .WithName("CreateOdunc")
@@ -516,3 +689,5 @@ app.Run();
 public record LoginRequest(string KullaniciAdi, string Sifre);
 public record KitapRequest(string Baslik, string Yazar, string? ISBN, int? YayinYili, int? TurID, int? StokAdedi, string? RafNo);
 public record OduncRequest(int KitapID, int UyeID, int? OduncGunu);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Kod, string YeniSifre);

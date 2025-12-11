@@ -1,65 +1,100 @@
-using Microsoft.Data.SqlClient;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Windows;
 
 namespace KutuphaneOtomasyon.Views
 {
     public partial class ForgotPasswordWindow : Window
     {
+        private readonly HttpClient _client = new HttpClient { BaseAddress = new Uri("http://localhost:5026/") };
+        
         public ForgotPasswordWindow()
         {
             InitializeComponent();
-            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
         }
-        
-        private void Reset_Click(object sender, RoutedEventArgs e)
+
+        private async void btnKodGonder_Click(object sender, RoutedEventArgs e)
         {
-            var username = txtUsername.Text.Trim();
-            var password = txtPassword.Password;
-            
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            var email = txtEmail.Text.Trim();
+            if (string.IsNullOrEmpty(email))
             {
-                MessageBox.Show("Lütfen tüm alanları doldurun!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Lütfen e-posta adresinizi girin.", "Hata", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            
-            if (password.Length < 6)
-            {
-                MessageBox.Show("Şifre en az 6 karakter olmalıdır!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            
+
+            btnKodGonder.IsEnabled = false;
+            btnKodGonder.Content = "Gönderiliyor...";
+
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                using var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
-                checkCmd.Parameters.AddWithValue("@user", username);
-                if ((int)checkCmd.ExecuteScalar() == 0)
+                var content = new StringContent(JsonSerializer.Serialize(new { Email = email }), Encoding.UTF8, "application/json");
+                var response = await _client.PostAsync("api/auth/sifremi-unuttum", content);
+
+                if (response.IsSuccessStatusCode)
                 {
-                    MessageBox.Show("Kullanıcı bulunamadı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    MessageBox.Show("Doğrulama kodu e-postanıza gönderildi.", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    pnlEmail.Visibility = Visibility.Collapsed;
+                    pnlReset.Visibility = Visibility.Visible;
                 }
-                
-                var hash = DatabaseHelper.HashPassword(password);
-                using var updateCmd = new SqlCommand("UPDATE Kullanicilar SET Sifre = @pass WHERE KullaniciAdi = @user", conn);
-                updateCmd.Parameters.AddWithValue("@pass", hash);
-                updateCmd.Parameters.AddWithValue("@user", username);
-                updateCmd.ExecuteNonQuery();
-                
-                MessageBox.Show("Şifreniz başarıyla değiştirildi!\n\nYeni şifrenizle giriş yapabilirsiniz.", 
-                    "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-                Close();
+                else
+                {
+                    var msg = await response.Content.ReadAsStringAsync();
+                    MessageBox.Show("Hata: " + msg, "Başarısız", MessageBoxButton.OK, MessageBoxImage.Error);
+                    btnKodGonder.IsEnabled = true;
+                    btnKodGonder.Content = "Doğrulama Kodu Gönder";
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Şifre sıfırlanamadı: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Sunucuya bağlanılamadı: " + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                btnKodGonder.IsEnabled = true;
+                btnKodGonder.Content = "Doğrulama Kodu Gönder";
             }
         }
-        
-        private void Back_Click(object sender, RoutedEventArgs e)
+
+        private async void btnSifreSifirla_Click(object sender, RoutedEventArgs e)
         {
-            Close();
+            var kod = txtKod.Text.Trim();
+            var yeniSifre = txtYeniSifre.Password;
+
+            if (string.IsNullOrEmpty(kod) || string.IsNullOrEmpty(yeniSifre))
+            {
+                MessageBox.Show("Lütfen tüm alanları doldurun.", "Hata", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            btnSifreSifirla.IsEnabled = false;
+
+            try
+            {
+                var payload = new { Kod = kod, YeniSifre = yeniSifre };
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                
+                var response = await _client.PostAsync("api/auth/sifre-sifirla", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    MessageBox.Show("Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    this.Close();
+                }
+                else
+                {
+                    var msg = await response.Content.ReadAsStringAsync();
+                    MessageBox.Show("Hata: " + msg, "Başarısız", MessageBoxButton.OK, MessageBoxImage.Error);
+                    btnSifreSifirla.IsEnabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Hata: " + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                btnSifreSifirla.IsEnabled = true;
+            }
+        }
+
+        private void btnIptal_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 }

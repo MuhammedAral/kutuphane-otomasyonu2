@@ -36,6 +36,15 @@ namespace KutuphaneOtomasyon.Views
                 MessageBox.Show("Telefon numarası 11 haneli olmalıdır (05XXXXXXXXX)!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            if (!string.IsNullOrEmpty(email))
+            {
+                if (!email.Contains("@") || !email.Contains("."))
+                {
+                    MessageBox.Show("Lütfen geçerli bir email adresi giriniz (örn: ornek@gmail.com)!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
             
             btnRegister.IsEnabled = false;
             btnRegister.Content = "Kaydediliyor...";
