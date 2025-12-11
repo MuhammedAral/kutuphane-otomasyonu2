@@ -16,122 +16,158 @@
             </Border.Effect>
             
             <StackPanel>
-                
-                <!-- Başlık -->
                 <Image Source="/Assets/logo.png" Width="70" Height="70" HorizontalAlignment="Center" Margin="0,0,0,15"/>
-                <TextBlock Text="Üye Kaydı" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
-                <TextBlock Text="Kütüphane üyesi olmak için bilgilerinizi girin" FontSize="12" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,5,0,25"/>
                 
-                <!-- Ad Soyad -->
-                <TextBlock Text="Ad Soyad" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
-                <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="👤" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
-                        <TextBox x:Name="txtAdSoyad" Grid.Column="1"
-                                 materialDesign:HintAssist.Hint="Ad Soyad"
-                                 materialDesign:HintAssist.Foreground="#666680"
-                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="White" FontSize="13"
-                                 VerticalContentAlignment="Center" Padding="5,0,15,0"
-                                 Height="45" MaxLength="50" CaretBrush="#3b82f6"/>
-                    </Grid>
-                </Border>
-                
-                <!-- Kullanıcı Adı -->
-                <TextBlock Text="Kullanıcı Adı" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
-                <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="🆔" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
-                        <TextBox x:Name="txtUsername" Grid.Column="1"
-                                 materialDesign:HintAssist.Hint="Kullanıcı Adı"
-                                 materialDesign:HintAssist.Foreground="#666680"
-                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="White" FontSize="13"
-                                 VerticalContentAlignment="Center" Padding="5,0,15,0"
-                                 Height="45" MaxLength="20" CaretBrush="#3b82f6"/>
-                    </Grid>
-                </Border>
-
-                <!-- Email -->
-                <TextBlock Text="Email" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
-                <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="📧" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
-                        <TextBox x:Name="txtEmail" Grid.Column="1"
-                                 materialDesign:HintAssist.Hint="Email Adresi (Opsiyonel)"
-                                 materialDesign:HintAssist.Foreground="#666680"
-                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="White" FontSize="13"
-                                 VerticalContentAlignment="Center" Padding="5,0,15,0"
-                                 Height="45" MaxLength="100" CaretBrush="#3b82f6"/>
-                    </Grid>
-                </Border>
-                
-                <!-- Telefon -->
-                <TextBlock Text="Telefon" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
-                <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="📱" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
-                        <TextBox x:Name="txtTelefon" Grid.Column="1"
-                                 materialDesign:HintAssist.Hint="Telefon (11 hane) (Opsiyonel)"
-                                 materialDesign:HintAssist.Foreground="#666680"
-                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="White" FontSize="13"
-                                 VerticalContentAlignment="Center" Padding="5,0,15,0"
-                                 Height="45" MaxLength="11" CaretBrush="#3b82f6"/>
-                    </Grid>
-                </Border>
-                
-                <!-- Şifre -->
-                <TextBlock Text="Şifre" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
-                <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,20">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="🔒" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
-                        <PasswordBox x:Name="txtPassword" Grid.Column="1"
-                                     materialDesign:HintAssist.Hint="Şifre"
+                <!-- KAYIT FORMU -->
+                <StackPanel x:Name="pnlForm">
+                    <TextBlock Text="Üye Kaydı" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Kütüphane üyesi olmak için bilgilerinizi girin" FontSize="12" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,5,0,25"/>
+                    
+                    <!-- Ad Soyad -->
+                    <TextBlock Text="Ad Soyad" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
+                    <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="👤" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
+                            <TextBox x:Name="txtAdSoyad" Grid.Column="1"
+                                     materialDesign:HintAssist.Hint="Ad Soyad"
+                                     materialDesign:HintAssist.Foreground="#666680"
+                                     materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="White" FontSize="13"
+                                     VerticalContentAlignment="Center" Padding="5,0,15,0"
+                                     Height="45" MaxLength="50" CaretBrush="#3b82f6"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Kullanıcı Adı -->
+                    <TextBlock Text="Kullanıcı Adı" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
+                    <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="🆔" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
+                            <TextBox x:Name="txtUsername" Grid.Column="1"
+                                     materialDesign:HintAssist.Hint="Kullanıcı Adı"
                                      materialDesign:HintAssist.Foreground="#666680"
                                      materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
                                      Background="Transparent" BorderThickness="0"
                                      Foreground="White" FontSize="13"
                                      VerticalContentAlignment="Center" Padding="5,0,15,0"
                                      Height="45" MaxLength="20" CaretBrush="#3b82f6"/>
-                    </Grid>
-                </Border>
-                
-                <!-- Kayıt Ol Butonu -->
-                <Button x:Name="btnRegister" Content="Kayıt Ol" Click="Register_Click"
-                        Style="{StaticResource GradientPrimaryButton}"
-                        Margin="0,0,0,15"/>
-                
-                <!-- Giriş Ekranına Dön -->
-                <Button Content="Giriş Ekranına Dön" Click="Back_Click"
-                        Style="{StaticResource GradientPrimaryButton}"
-                        HorizontalAlignment="Center" Height="32" FontSize="12"/>
-                
+                        </Grid>
+                    </Border>
+
+                    <!-- Email -->
+                    <TextBlock Text="Email" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
+                    <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="📧" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
+                            <TextBox x:Name="txtEmail" Grid.Column="1"
+                                     materialDesign:HintAssist.Hint="Email Adresi (Gmail)"
+                                     materialDesign:HintAssist.Foreground="#666680"
+                                     materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="White" FontSize="13"
+                                     VerticalContentAlignment="Center" Padding="5,0,15,0"
+                                     Height="45" MaxLength="100" CaretBrush="#3b82f6"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Telefon -->
+                    <TextBlock Text="Telefon" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
+                    <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="📱" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
+                            <TextBox x:Name="txtTelefon" Grid.Column="1"
+                                     materialDesign:HintAssist.Hint="Telefon (11 hane)"
+                                     materialDesign:HintAssist.Foreground="#666680"
+                                     materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="White" FontSize="13"
+                                     VerticalContentAlignment="Center" Padding="5,0,15,0"
+                                     Height="45" MaxLength="11" CaretBrush="#3b82f6"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Şifre -->
+                    <TextBlock Text="Şifre" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
+                    <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,20">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="🔒" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
+                            <PasswordBox x:Name="txtPassword" Grid.Column="1"
+                                         materialDesign:HintAssist.Hint="Şifre"
+                                         materialDesign:HintAssist.Foreground="#666680"
+                                         materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                         Background="Transparent" BorderThickness="0"
+                                         Foreground="White" FontSize="13"
+                                         VerticalContentAlignment="Center" Padding="5,0,15,0"
+                                         Height="45" MaxLength="20" CaretBrush="#3b82f6"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Kayıt Ol Butonu -->
+                    <Button x:Name="btnRegister" Content="Kayıt Ol" Click="Register_Click"
+                            Style="{StaticResource GradientPrimaryButton}"
+                            Margin="0,0,0,15"/>
+                    
+                    <!-- Giriş Ekranına Dön -->
+                    <Button Content="Giriş Ekranına Dön" Click="Back_Click"
+                            Style="{StaticResource GradientPrimaryButton}"
+                            HorizontalAlignment="Center" Height="32" FontSize="12"/>
+                </StackPanel>
+
+                <!-- DOĞRULAMA EKRANI (Başlangıçta Gizli) -->
+                <StackPanel x:Name="pnlVerify" Visibility="Collapsed">
+                    <TextBlock Text="E-posta Doğrulama" FontSize="20" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                    <TextBlock Text="Lütfen e-posta adresinize (Gmail) gönderdiğimiz doğrulama kodunu giriniz." 
+                               TextWrapping="Wrap" TextAlignment="Center" Foreground="#9ca3af" Margin="0,0,0,30"/>
+
+                    <TextBlock Text="Doğrulama Kodu" FontSize="12" Foreground="#c8c8d8" Margin="0,0,0,5"/>
+                    <Border Background="#252536" CornerRadius="22" Height="45" Margin="0,0,0,20">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="🔑" VerticalAlignment="Center" Margin="15,0,5,0" FontSize="16" Foreground="#8b8b9e"/>
+                            <TextBox x:Name="txtVerifyCode" Grid.Column="1"
+                                     materialDesign:HintAssist.Hint="6 Haneli Kod"
+                                     materialDesign:HintAssist.Foreground="#666680"
+                                     materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="White" FontSize="13"
+                                     VerticalContentAlignment="Center" Padding="5,0,15,0"
+                                     Height="45" MaxLength="6" CaretBrush="#3b82f6"/>
+                        </Grid>
+                    </Border>
+
+                    <Button x:Name="btnVerify" Content="Doğrula ve Tamamla" Click="Verify_Click"
+                            Style="{StaticResource GradientPrimaryButton}"
+                            Margin="0,0,0,15"/>
+
+                    <Button Content="Giriş Ekranına Dön" Click="Back_Click"
+                            Style="{StaticResource GradientPrimaryButton}"
+                            HorizontalAlignment="Center" Height="32" FontSize="12"/>
+                </StackPanel>
+
             </StackPanel>
         </Border>
     </Grid>

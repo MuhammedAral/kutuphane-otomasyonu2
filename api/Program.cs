@@ -133,10 +133,25 @@ using (var scope = app.Services.CreateScope())
                 )
             END", conn);
         tableCmd.ExecuteNonQuery();
+
+        // Eksik Kolon Kontrolü (Migration)
+        // 1. AktifMi
+        var colCmd = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('Kullanicilar') AND name = 'AktifMi'", conn);
+        if ((int)colCmd.ExecuteScalar() == 0)
+        {
+            new SqlCommand("ALTER TABLE Kullanicilar ADD AktifMi BIT DEFAULT 1", conn).ExecuteNonQuery();
+        }
+
+        // 2. Telefon
+        colCmd = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('Kullanicilar') AND name = 'Telefon'", conn);
+        if ((int)colCmd.ExecuteScalar() == 0)
+        {
+            new SqlCommand("ALTER TABLE Kullanicilar ADD Telefon NVARCHAR(20)", conn).ExecuteNonQuery();
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine("Tablo oluşturma hatası: " + ex.Message);
+        Console.WriteLine("DB Başlangıç hatası: " + ex.Message);
     }
 }
 
@@ -288,6 +303,97 @@ app.MapPost("/api/auth/sifre-sifirla", async (ResetPasswordRequest request) =>
     return Results.Ok(new { message = "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });
 })
 .WithName("SifreSifirla")
+.WithTags("Giriş")
+.AllowAnonymous();
+
+app.MapPost("/api/auth/register", async (RegisterRequest request, IEmailService emailService) =>
+{
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    // 1. Validasyonlar
+    if (!request.Email.EndsWith("@gmail.com"))
+        return Results.BadRequest(new { message = "Sadece @gmail.com uzantılı mail adresleri kabul edilmektedir." });
+
+    if (request.Sifre.Length < 6)
+        return Results.BadRequest(new { message = "Şifre en az 6 karakter olmalıdır." });
+
+    // 2. Kullanıcı Adı veya Email Kontrolü
+    var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user OR Email = @email", conn);
+    checkCmd.Parameters.AddWithValue("@user", request.KullaniciAdi);
+    checkCmd.Parameters.AddWithValue("@email", request.Email);
+    if ((int)await checkCmd.ExecuteScalarAsync() > 0)
+        return Results.BadRequest(new { message = "Bu kullanıcı adı veya e-posta adresi zaten kullanılıyor." });
+
+    // 3. Kullanıcıyı Pasif Olarak Ekle
+    var hash = HashPassword(request.Sifre);
+    var insertCmd = new SqlCommand(@"
+        INSERT INTO Kullanicilar (KullaniciAdi, Sifre, AdSoyad, Email, Telefon, Rol, AktifMi) 
+        OUTPUT INSERTED.KullaniciID
+        VALUES (@user, @pass, @ad, @email, @tel, 'Uye', 0)", conn);
+    
+    insertCmd.Parameters.AddWithValue("@user", request.KullaniciAdi);
+    insertCmd.Parameters.AddWithValue("@pass", hash);
+    insertCmd.Parameters.AddWithValue("@ad", request.AdSoyad);
+    insertCmd.Parameters.AddWithValue("@email", request.Email);
+    insertCmd.Parameters.AddWithValue("@tel", (object?)request.Telefon ?? DBNull.Value);
+    
+    var userId = (int)await insertCmd.ExecuteScalarAsync();
+
+    // 4. Doğrulama Kodu Oluştur ve Gönder
+    var random = new Random();
+    var kod = random.Next(100000, 999999).ToString();
+    var sonKullanma = DateTime.Now.AddMinutes(15); 
+
+    var codeCmd = new SqlCommand(@"
+        INSERT INTO SifreSifirlamaIslemleri (KullaniciID, Kod, SonKullanmaTarihi, KullanildiMi)
+        VALUES (@uid, @kod, @skk, 0)", conn); // Aynı tabloyu doğrulama için de kullanıyoruz
+    codeCmd.Parameters.AddWithValue("@uid", userId);
+    codeCmd.Parameters.AddWithValue("@kod", kod);
+    codeCmd.Parameters.AddWithValue("@skk", sonKullanma);
+    await codeCmd.ExecuteNonQueryAsync();
+
+    try {
+        await emailService.SendEmailAsync(request.Email, "Kütüphane Üyelik Doğrulama", 
+            $"Merhaba {request.AdSoyad},<br><br>Kayıt işlemini tamamlamak için doğrulama kodunuz: <b>{kod}</b><br><br>Bu kod 15 dakika geçerlidir.");
+    } catch {}
+
+    return Results.Ok(new { message = "Kayıt başarılı. Lütfen e-mail adresinize gelen kodu giriniz.", userId = userId });
+})
+.WithName("Register")
+.WithTags("Giriş")
+.AllowAnonymous();
+
+app.MapPost("/api/auth/verify-email", async (VerifyRequest request) =>
+{
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    var cmd = new SqlCommand(@"
+        SELECT TOP 1 IslemID, KullaniciID FROM SifreSifirlamaIslemleri 
+        WHERE Kod = @kod AND KullaniciID = @uid AND KullanildiMi = 0 AND SonKullanmaTarihi > GETDATE()
+        ORDER BY IslemID DESC", conn);
+    cmd.Parameters.AddWithValue("@kod", request.Kod);
+    cmd.Parameters.AddWithValue("@uid", request.UserId);
+
+    int islemId = 0;
+    
+    using (var reader = await cmd.ExecuteReaderAsync())
+    {
+        if (reader.Read()) islemId = reader.GetInt32(0);
+    }
+
+    if (islemId == 0) return Results.BadRequest(new { message = "Geçersiz veya süresi dolmuş kod." });
+
+    // Hesabı Aktifleştir
+    await new SqlCommand($"UPDATE Kullanicilar SET AktifMi = 1 WHERE KullaniciID = {request.UserId}", conn).ExecuteNonQueryAsync();
+    
+    // Kodu yak
+    await new SqlCommand($"UPDATE SifreSifirlamaIslemleri SET KullanildiMi = 1 WHERE IslemID = {islemId}", conn).ExecuteNonQueryAsync();
+
+    return Results.Ok(new { message = "Hesabınız başarıyla doğrulandı. Giriş yapabilirsiniz." });
+})
+.WithName("VerifyEmail")
 .WithTags("Giriş")
 .AllowAnonymous();
 
@@ -691,3 +797,5 @@ public record KitapRequest(string Baslik, string Yazar, string? ISBN, int? Yayin
 public record OduncRequest(int KitapID, int UyeID, int? OduncGunu);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Kod, string YeniSifre);
+public record RegisterRequest(string KullaniciAdi, string Sifre, string AdSoyad, string Email, string? Telefon);
+public record VerifyRequest(int UserId, string Kod);
