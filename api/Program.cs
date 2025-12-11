@@ -82,8 +82,23 @@ app.UseCors("AllowAll");
 app.UseAuthentication(); // Kimlik Doğrulama (Önce bu)
 app.UseAuthorization();  // Yetkilendirme (Sonra bu)
 
+// Static files - website klasöründen
+var websitePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "website");
+if (Directory.Exists(websitePath))
+{
+    app.UseDefaultFiles(new DefaultFilesOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(websitePath)
+    });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(websitePath),
+        RequestPath = ""
+    });
+}
+
 // Database connection string
-var connectionString = "Server=localhost;Database=KutuphaneDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;";
+var connectionString = "Server=tcp:127.0.0.1,1433;Database=KutuphaneDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;";
 
 // Yardımcı Metot: Şifre Hashleme
 string HashPassword(string password)
@@ -406,6 +421,47 @@ app.MapPut("/api/odunc/{id}/iade", (int id) =>
     return affected > 0 ? Results.Ok(new { message = "Kitap iade alındı" }) : Results.NotFound();
 })
 .WithName("IadeAl")
+.WithTags("Ödünç İşlemleri")
+.RequireAuthorization();
+
+// Üyeye özel ödünç listesi
+app.MapGet("/api/odunc/uye/{uyeId}", (int uyeId) =>
+{
+    var islemler = new List<object>();
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+    
+    var cmd = new SqlCommand(@"
+        SELECT o.IslemID, k.Baslik, k.Yazar, o.OduncTarihi, o.BeklenenIadeTarihi, o.IadeTarihi, o.Durum,
+            CASE 
+                WHEN o.Durum = 'Odunc' AND o.BeklenenIadeTarihi < GETDATE() 
+                THEN DATEDIFF(DAY, o.BeklenenIadeTarihi, GETDATE())
+                ELSE 0 
+            END as GecikmeGun
+        FROM OduncIslemleri o
+        JOIN Kitaplar k ON o.KitapID = k.KitapID
+        WHERE o.UyeID = @uyeId
+        ORDER BY o.IslemID DESC", conn);
+    cmd.Parameters.AddWithValue("@uyeId", uyeId);
+    
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
+    {
+        islemler.Add(new
+        {
+            IslemID = reader.GetInt32(0),
+            Baslik = reader.GetString(1),
+            Yazar = reader.GetString(2),
+            OduncTarihi = reader.GetDateTime(3),
+            BeklenenIadeTarihi = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4),
+            IadeTarihi = reader.IsDBNull(5) ? (DateTime?)null : reader.GetDateTime(5),
+            Durum = reader.GetString(6),
+            GecikmeGun = reader.GetInt32(7)
+        });
+    }
+    return Results.Ok(islemler);
+})
+.WithName("GetUyeOdunc")
 .WithTags("Ödünç İşlemleri")
 .RequireAuthorization();
 

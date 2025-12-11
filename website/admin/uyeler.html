@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Üye Yönetimi - Kütüphane Sistemi</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="icon">📚</span>
+                    <span class="text">Yönetim</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/admin/index.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/admin/kitaplar.html" class="nav-item">
+                    <span class="icon">📖</span>
+                    <span>Kitaplar</span>
+                </a>
+                <a href="/admin/uyeler.html" class="nav-item">
+                    <span class="icon">👥</span>
+                    <span>Üyeler</span>
+                </a>
+                <a href="/admin/odunc.html" class="nav-item">
+                    <span class="icon">📋</span>
+                    <span>Ödünç İşlemleri</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <div class="user-info">
+                        <div class="user-name" id="user-name">Yükleniyor...</div>
+                        <div class="user-role" id="user-role">Yönetici</div>
+                    </div>
+                    <button class="logout-btn" onclick="Auth.logout()" title="Çıkış Yap">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>👥 Üye Yönetimi</h1>
+                <p>Sisteme kayıtlı tüm üyeleri görüntüleyin.</p>
+            </div>
+
+            <div class="table-card">
+                <div class="table-header">
+                    <h2>Üye Listesi</h2>
+                    <div class="search-box">
+                        <span class="icon">🔍</span>
+                        <input type="text" id="search-input" placeholder="Üye ara...">
+                    </div>
+                </div>
+                <div class="table-body" id="uye-table">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Yükleniyor...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        if (!Auth.requireAuth()) { }
+        else if (Auth.getUser().role !== 'Yonetici') {
+            window.location.href = '/index.html';
+        }
+
+        let allUyeler = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUyeler();
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                filterUyeler(e.target.value);
+            });
+        });
+
+        async function loadUyeler() {
+            const container = document.getElementById('uye-table');
+            try {
+                allUyeler = await api.getUyeler();
+                renderUyeler(allUyeler);
+            } catch (error) {
+                Utils.showError(container, 'Üyeler yüklenemedi');
+            }
+        }
+
+        function filterUyeler(query) {
+            if (!query) { renderUyeler(allUyeler); return; }
+            const q = query.toLowerCase();
+            const filtered = allUyeler.filter(u =>
+                (u.adSoyad || '').toLowerCase().includes(q) ||
+                (u.kullaniciAdi || '').toLowerCase().includes(q) ||
+                (u.email || '').toLowerCase().includes(q)
+            );
+            renderUyeler(filtered);
+        }
+
+        function renderUyeler(uyeler) {
+            const container = document.getElementById('uye-table');
+            if (!uyeler || uyeler.length === 0) {
+                Utils.showEmpty(container, 'Üye bulunamadı', '👤');
+                return;
+            }
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad Soyad</th>
+                            <th>Kullanıcı Adı</th>
+                            <th>E-posta</th>
+                            <th>Telefon</th>
+                            <th>Rol</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${uyeler.map(u => `
+                            <tr>
+                                <td>${u.kullaniciID}</td>
+                                <td><strong>${u.adSoyad || '-'}</strong></td>
+                                <td>${u.kullaniciAdi || '-'}</td>
+                                <td>${u.email || '-'}</td>
+                                <td>${u.telefon || '-'}</td>
+                                <td>
+                                    <span class="badge ${u.rol === 'Yonetici' ? 'badge-purple' : 'badge-info'}">
+                                        ${u.rol || '-'}
+                                    </span>
+                                </td>
+                                <td>
+                                    ${u.aktifMi
+                    ? '<span class="badge badge-success">Aktif</span>'
+                    : '<span class="badge badge-danger">Pasif</span>'
+                }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+    </script>
+</body>
+
+</html>

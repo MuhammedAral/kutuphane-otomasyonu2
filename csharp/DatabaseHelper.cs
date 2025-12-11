@@ -7,7 +7,7 @@ namespace KutuphaneOtomasyon
     public static class DatabaseHelper
     {
         // Connection string sabitleri
-        private const string Server = "localhost";
+        private const string Server = "tcp:127.0.0.1,1433";
         private const string Database = "KutuphaneDB";
         private const string Username = "sa";
         private const string Password = "YourStrong@Password123";

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönetici Paneli - Kütüphane Sistemi</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Admin Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="icon">📚</span>
+                    <span class="text">Yönetim</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/admin/index.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/admin/kitaplar.html" class="nav-item">
+                    <span class="icon">📖</span>
+                    <span>Kitaplar</span>
+                </a>
+                <a href="/admin/uyeler.html" class="nav-item">
+                    <span class="icon">👥</span>
+                    <span>Üyeler</span>
+                </a>
+                <a href="/admin/odunc.html" class="nav-item">
+                    <span class="icon">📋</span>
+                    <span>Ödünç İşlemleri</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <div class="user-info">
+                        <div class="user-name" id="user-name">Yükleniyor...</div>
+                        <div class="user-role" id="user-role">Yönetici</div>
+                    </div>
+                    <button class="logout-btn" onclick="Auth.logout()" title="Çıkış Yap">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>📊 Yönetici Paneli</h1>
+                <p>Kütüphane yönetim sistemine hoş geldiniz.</p>
+            </div>
+
+            <!-- İstatistik Kartları -->
+            <div class="cards-grid">
+                <div class="stat-card">
+                    <div class="card-icon blue">📚</div>
+                    <div class="card-value" id="stat-kitap">-</div>
+                    <div class="card-label">Toplam Kitap</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-icon green">👥</div>
+                    <div class="card-value" id="stat-uye">-</div>
+                    <div class="card-label">Toplam Üye</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-icon purple">📖</div>
+                    <div class="card-value" id="stat-odunc">-</div>
+                    <div class="card-label">Ödünçte</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-icon red">⏰</div>
+                    <div class="card-value" id="stat-geciken">-</div>
+                    <div class="card-label">Geciken</div>
+                </div>
+            </div>
+
+            <!-- Son İşlemler -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h2>📋 Son Ödünç İşlemleri</h2>
+                    <a href="/admin/odunc.html" class="btn btn-gradient" style="padding: 10px 20px; font-size: 13px;">
+                        Tümünü Gör
+                    </a>
+                </div>
+                <div class="table-body" id="son-islemler">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Yükleniyor...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // Yetki kontrolü
+        if (!Auth.requireAuth()) {
+            // redirect yapılıyor
+        } else {
+            const user = Auth.getUser();
+            if (user.role !== 'Yonetici') {
+                window.location.href = '/index.html';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadStats();
+            await loadSonIslemler();
+        });
+
+        async function loadStats() {
+            try {
+                const stats = await api.getIstatistikler();
+                document.getElementById('stat-kitap').textContent = stats.toplamKitap || 0;
+                document.getElementById('stat-uye').textContent = stats.toplamUye || 0;
+                document.getElementById('stat-odunc').textContent = stats.oduncteKitap || 0;
+                document.getElementById('stat-geciken').textContent = stats.gecikenKitap || 0;
+            } catch (error) {
+                console.error('İstatistikler yüklenemedi:', error);
+            }
+        }
+
+        async function loadSonIslemler() {
+            const container = document.getElementById('son-islemler');
+
+            try {
+                const islemler = await api.getAllOdunc();
+                const son10 = islemler.slice(0, 10);
+
+                if (son10.length === 0) {
+                    Utils.showEmpty(container, 'Henüz ödünç işlemi yok', '📋');
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kitap</th>
+                                <th>Üye</th>
+                                <th>Ödünç Tarihi</th>
+                                <th>İade Tarihi</th>
+                                <th>Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${son10.map(o => `
+                                <tr>
+                                    <td><strong>${o.baslik || '-'}</strong></td>
+                                    <td>${o.adSoyad || '-'}</td>
+                                    <td>${Utils.formatDate(o.oduncTarihi)}</td>
+                                    <td>${Utils.formatDate(o.beklenenIadeTarihi)}</td>
+                                    <td>
+                                        ${o.durum === 'Odunc'
+                        ? '<span class="badge badge-warning">📖 Ödünçte</span>'
+                        : '<span class="badge badge-success">✓ İade Edildi</span>'
+                    }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                Utils.showError(container, 'Veriler yüklenemedi');
+            }
+        }
+    </script>
+</body>
+
+</html>
