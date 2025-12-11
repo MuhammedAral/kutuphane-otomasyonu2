@@ -120,7 +120,7 @@ namespace KutuphaneOtomasyon.Pages
                     {
                         using var conn = DatabaseHelper.GetConnection();
                         conn.Open();
-                        var cmd = new SqlCommand("DELETE FROM Kullanicilar WHERE KullaniciID = @id", conn);
+                        using var cmd = new SqlCommand("DELETE FROM Kullanicilar WHERE KullaniciID = @id", conn);
                         cmd.Parameters.AddWithValue("@id", row["KullaniciID"]);
                         cmd.ExecuteNonQuery();
                         LoadUyeler();

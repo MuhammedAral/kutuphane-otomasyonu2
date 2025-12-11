@@ -23,17 +23,17 @@ namespace KutuphaneOtomasyon.MemberPages
             conn.Open();
             
             // Ödünçte
-            var cmd1 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc'", conn);
+            using var cmd1 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc'", conn);
             cmd1.Parameters.AddWithValue("@id", _userId);
             txtOdunc.Text = cmd1.ExecuteScalar()?.ToString() ?? "0";
             
             // Geciken
-            var cmd2 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc' AND BeklenenIadeTarihi < GETDATE()", conn);
+            using var cmd2 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc' AND BeklenenIadeTarihi < GETDATE()", conn);
             cmd2.Parameters.AddWithValue("@id", _userId);
             txtGeciken.Text = cmd2.ExecuteScalar()?.ToString() ?? "0";
             
             // Toplam
-            var cmd3 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id", conn);
+            using var cmd3 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id", conn);
             cmd3.Parameters.AddWithValue("@id", _userId);
             txtToplam.Text = cmd3.ExecuteScalar()?.ToString() ?? "0";
         }
@@ -43,7 +43,7 @@ namespace KutuphaneOtomasyon.MemberPages
             using var conn = DatabaseHelper.GetConnection();
             conn.Open();
             
-            var cmd = new SqlCommand(@"
+            using var cmd = new SqlCommand(@"
                 SELECT TOP 5 k.Baslik, o.OduncTarihi, o.BeklenenIadeTarihi, 
                     CASE WHEN o.Durum = 'Odunc' THEN '📖 Ödünçte' ELSE '✅ İade Edildi' END as DurumText
                 FROM OduncIslemleri o
@@ -52,7 +52,7 @@ namespace KutuphaneOtomasyon.MemberPages
                 ORDER BY o.IslemID DESC", conn);
             cmd.Parameters.AddWithValue("@id", _userId);
             
-            var adapter = new SqlDataAdapter(cmd);
+            using var adapter = new SqlDataAdapter(cmd);
             var dt = new DataTable();
             adapter.Fill(dt);
             dgSon.ItemsSource = dt.DefaultView;

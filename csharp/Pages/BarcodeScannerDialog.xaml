@@ -1,0 +1,46 @@
+<Window x:Class="KutuphaneOtomasyon.Pages.BarcodeScannerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Barkod Tara" Height="450" Width="600"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="Black"
+        Closing="Window_Closing">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Üst Bar -->
+        <Border Grid.Row="0" Background="#202020" Padding="15">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="📷" Foreground="White" FontSize="18" Margin="0,0,10,0"/>
+                <ComboBox x:Name="cmbKameralar" Width="250" Height="30" SelectionChanged="cmbKameralar_SelectionChanged"/>
+            </StackPanel>
+        </Border>
+        
+        <!-- Kamera Görüntüsü -->
+        <Image x:Name="imgKamera" Grid.Row="1" Stretch="Uniform"/>
+        
+        <!-- Tarama Çizgisi Animasyonu (Görsel Efekt) -->
+        <Border Grid.Row="1" BorderBrush="#ff0000" BorderThickness="0,2,0,0" VerticalAlignment="Top" Height="2" Opacity="0.5">
+            <Border.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                             <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,0,0,0" To="0,400,0,0" Duration="0:0:1.5"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Border.Triggers>
+        </Border>
+
+        <!-- Alt Bar -->
+        <Border Grid.Row="2" Background="#202020" Padding="15">
+            <Button Content="İptal" Click="Iptal_Click" Width="100" Background="#dc2626" Foreground="White" BorderThickness="0"/>
+        </Border>
+    </Grid>
+</Window>

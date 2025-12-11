@@ -1,0 +1,227 @@
+<Page x:Class="KutuphaneOtomasyon.Pages.DashboardPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+      mc:Ignorable="d" 
+      d:DesignHeight="600" d:DesignWidth="900"
+      Title="Yönetici Özeti">
+
+    <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="30">
+                <!-- Başlık -->
+                <TextBlock Text="Yönetici Özeti" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,20"/>
+
+                <!-- İstatistik Kartları -->
+                <Grid Margin="0,0,0,30">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Toplam Kitap -->
+                    <Border Grid.Column="0" CornerRadius="15" Margin="0,0,10,0" Height="140">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#3b82f6" Offset="0"/>
+                                <GradientStop Color="#8b5cf6" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="15">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="📚" FontSize="28" Foreground="White" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Text="Toplam Kitap" FontSize="14" Foreground="#e0e7ff" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+                            <Viewbox Grid.Row="2" MaxHeight="50" Margin="0,5,0,0">
+                                <TextBlock x:Name="txtTotalBooks" Text="0" FontWeight="Bold" Foreground="White"/>
+                            </Viewbox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Toplam Üye -->
+                    <Border Grid.Column="1" CornerRadius="15" Margin="10,0,10,0" Height="140">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#8b5cf6" Offset="0"/>
+                                <GradientStop Color="#ec4899" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="15">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="👥" FontSize="28" Foreground="White" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Text="Toplam Üye" FontSize="14" Foreground="#ede9fe" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+                            <Viewbox Grid.Row="2" MaxHeight="50" Margin="0,5,0,0">
+                                <TextBlock x:Name="txtTotalMembers" Text="0" FontWeight="Bold" Foreground="White"/>
+                            </Viewbox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Ödünçtekiler -->
+                    <Border Grid.Column="2" CornerRadius="15" Margin="10,0,10,0" Height="140">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#f59e0b" Offset="0"/>
+                                <GradientStop Color="#fbbf24" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="15">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="🔄" FontSize="28" Foreground="White" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Text="Ödünçteki Kitaplar" FontSize="14" Foreground="#fef3c7" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+                            <Viewbox Grid.Row="2" MaxHeight="50" Margin="0,5,0,0">
+                                <TextBlock x:Name="txtActiveLoans" Text="0" FontWeight="Bold" Foreground="White"/>
+                            </Viewbox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Gecikenler -->
+                    <Border Grid.Column="3" CornerRadius="15" Margin="10,0,0,0" Height="140">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#dc2626" Offset="0"/>
+                                <GradientStop Color="#f87171" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="15">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="⚠️" FontSize="28" Foreground="White" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Text="Geciken İadeler" FontSize="14" Foreground="#fee2e2" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+                            <Viewbox Grid.Row="2" MaxHeight="50" Margin="0,5,0,0">
+                                <TextBlock x:Name="txtOverdueBooks" Text="0" FontWeight="Bold" Foreground="White"/>
+                            </Viewbox>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Alt Bölümler -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Gecikenler Listesi -->
+                    <Border Grid.Column="0" Background="#252540" CornerRadius="15" Margin="0,0,15,0">
+                        <StackPanel Margin="20">
+                            <TextBlock Text="📅 Geciken İadeler" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+                            <DataGrid x:Name="dgOverdue" AutoGenerateColumns="False" 
+                                      IsReadOnly="True" HeadersVisibility="Column"
+                                      Background="Transparent" BorderThickness="0"
+                                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#3f3f56">
+                                <DataGrid.Resources>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="#9ca3af"/>
+                                        <Setter Property="Padding" Value="10"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                    </Style>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Foreground" Value="#e5e7eb"/>
+                                        <Setter Property="Padding" Value="10"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                    </Style>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#2f2f4a"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Üye Adı" Binding="{Binding AdSoyad}" Width="*"/>
+                                    <DataGridTextColumn Header="Kitap" Binding="{Binding KitapBaslik}" Width="*"/>
+                                    <DataGridTextColumn Header="Son Tarih" Binding="{Binding BeklenenIadeTarihi, StringFormat=dd.MM.yyyy}" Width="Auto"/>
+                                    <DataGridTextColumn Header="Gecikme (Gün)" Binding="{Binding GecikmeGun}" Width="Auto" Foreground="#ef4444"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            
+                            <TextBlock x:Name="txtNoOverdue" Text="😎 Harika! Geciken kitap yok." 
+                                       Foreground="#9ca3af" FontStyle="Italic" HorizontalAlignment="Center" 
+                                       Margin="0,20,0,0" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Hızlı İşlemler - Düzenlendi -->
+                    <Border Grid.Column="1" Background="#252540" CornerRadius="15">
+                        <StackPanel Margin="20">
+                            <TextBlock Text="🚀 Hızlı İşlemler" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+                            
+                            <Border CornerRadius="10" Margin="0,0,0,10" Cursor="Hand" MouseLeftButtonDown="QuickAddBook_Border_Click">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#2563eb" Offset="0"/>
+                                        <GradientStop Color="#3b82f6" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,10">
+                                    <TextBlock Text="➕" Margin="0,0,10,0" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Yeni Kitap Ekle" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border CornerRadius="10" Margin="0,0,0,10" Cursor="Hand" MouseLeftButtonDown="QuickAddMember_Border_Click">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#7c3aed" Offset="0"/>
+                                        <GradientStop Color="#8b5cf6" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,10">
+                                    <TextBlock Text="➕" Margin="0,0,10,0" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Yeni Üye Kaydı" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <Border CornerRadius="10" Margin="0,0,0,10" Cursor="Hand" MouseLeftButtonDown="QuickLoan_Border_Click">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#d97706" Offset="0"/>
+                                        <GradientStop Color="#f59e0b" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,10">
+                                    <TextBlock Text="🔄" Margin="0,0,10,0" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Ödünç Ver" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Separator Background="#3f3f56" Margin="0,20"/>
+                            
+                            <TextBlock Text="Sistem Durumu" FontSize="14" Foreground="#9ca3af" Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                <Ellipse Width="8" Height="8" Fill="#22c55e" Margin="0,0,10,0"/>
+                                <TextBlock Text="Veritabanı Bağlı" Foreground="#e5e7eb"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8" Fill="#22c55e" Margin="0,0,10,0"/>
+                                <TextBlock Text="API Servisi Aktif" Foreground="#e5e7eb"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

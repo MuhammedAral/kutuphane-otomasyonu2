@@ -20,7 +20,7 @@ namespace KutuphaneOtomasyon.MemberPages
             using var conn = DatabaseHelper.GetConnection();
             conn.Open();
             
-            var cmd = new SqlCommand(@"
+            using var cmd = new SqlCommand(@"
                 SELECT k.Baslik, o.OduncTarihi, o.BeklenenIadeTarihi, 
                     CASE WHEN o.Durum = 'Odunc' THEN '📖 Ödünçte' ELSE '✅ İade Edildi' END as DurumText,
                     CASE 
@@ -34,7 +34,7 @@ namespace KutuphaneOtomasyon.MemberPages
                 ORDER BY o.IslemID DESC", conn);
             cmd.Parameters.AddWithValue("@id", _userId);
             
-            var adapter = new SqlDataAdapter(cmd);
+            using var adapter = new SqlDataAdapter(cmd);
             var dt = new DataTable();
             adapter.Fill(dt);
             dgOdunc.ItemsSource = dt.DefaultView;

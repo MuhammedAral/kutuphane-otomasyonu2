@@ -26,12 +26,12 @@ namespace KutuphaneOtomasyon.Pages
             conn.Open();
             
             // Mevcut kitaplar - Kitap adı ve yazar
-            var kitapAdapter = new SqlDataAdapter("SELECT KitapID, Baslik + ' - ' + Yazar as Baslik FROM Kitaplar WHERE MevcutAdet > 0 ORDER BY Baslik", conn);
+            using var kitapAdapter = new SqlDataAdapter("SELECT KitapID, Baslik + ' - ' + Yazar as Baslik FROM Kitaplar WHERE MevcutAdet > 0 ORDER BY Baslik", conn);
             kitapAdapter.Fill(_kitaplar);
             lstKitaplar.ItemsSource = _kitaplar.DefaultView;
             
             // Üyeler
-            var uyeAdapter = new SqlDataAdapter("SELECT KullaniciID, AdSoyad FROM Kullanicilar WHERE Rol = 'Uye' ORDER BY AdSoyad", conn);
+            using var uyeAdapter = new SqlDataAdapter("SELECT KullaniciID, AdSoyad FROM Kullanicilar WHERE Rol = 'Uye' ORDER BY AdSoyad", conn);
             uyeAdapter.Fill(_uyeler);
             lstUyeler.ItemsSource = _uyeler.DefaultView;
         }
@@ -95,7 +95,7 @@ namespace KutuphaneOtomasyon.Pages
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
                 
-                var cmd = new SqlCommand(@"
+                using var cmd = new SqlCommand(@"
                     INSERT INTO OduncIslemleri (KitapID, UyeID, BeklenenIadeTarihi) 
                     VALUES (@kitap, @uye, DATEADD(DAY, @gun, GETDATE()));
                     UPDATE Kitaplar SET MevcutAdet = MevcutAdet - 1 WHERE KitapID = @kitap", conn);
@@ -114,5 +114,36 @@ namespace KutuphaneOtomasyon.Pages
         }
         
         private void Iptal_Click(object sender, RoutedEventArgs e) => Close();
+
+        private void BarkodTara_Click(object sender, RoutedEventArgs e)
+        {
+            var scanner = new BarcodeScannerDialog();
+            if (scanner.ShowDialog() == true)
+            {
+                var scannedIsbn = scanner.ScannedBarcode;
+                // Veritabanından bu ISBN'e ait kitabı bul
+                try 
+                {
+                    using var conn = DatabaseHelper.GetConnection();
+                    conn.Open();
+                    using var cmd = new SqlCommand("SELECT Baslik FROM Kitaplar WHERE ISBN = @isbn", conn);
+                    cmd.Parameters.AddWithValue("@isbn", scannedIsbn);
+                    var result = cmd.ExecuteScalar();
+                    
+                    if (result != null)
+                    {
+                        txtKitapAra.Text = result.ToString(); // Kitap adını yaz, böylece liste filtrelenir
+                    }
+                    else
+                    {
+                        MessageBox.Show("Bu barkoda sahip kitap bulunamadı!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
     }
 }

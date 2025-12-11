@@ -39,7 +39,7 @@ namespace KutuphaneOtomasyon.Pages
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
                 
-                var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
+                using var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
                 checkCmd.Parameters.AddWithValue("@user", txtUsername.Text.Trim());
                 if ((int)checkCmd.ExecuteScalar() > 0)
                 {
@@ -48,7 +48,7 @@ namespace KutuphaneOtomasyon.Pages
                 }
                 
                 var hash = DatabaseHelper.HashPassword(txtPassword.Password);
-                var cmd = new SqlCommand(@"INSERT INTO Kullanicilar 
+                using var cmd = new SqlCommand(@"INSERT INTO Kullanicilar 
                     (KullaniciAdi, Sifre, AdSoyad, Email, Telefon, Rol) 
                     VALUES (@user, @pass, @ad, @email, @tel, 'Uye')", conn);
                 cmd.Parameters.AddWithValue("@user", txtUsername.Text.Trim());

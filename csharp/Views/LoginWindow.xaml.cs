@@ -40,6 +40,11 @@ namespace KutuphaneOtomasyon.Views
                 
                 if (result.Success)
                 {
+                    // Oturum bilgilerini sakla
+                    CurrentSession.UserId = result.UserId;
+                    CurrentSession.AdSoyad = result.AdSoyad;
+                    CurrentSession.Rol = result.Rol;
+
                     if (result.Rol == "Yonetici")
                     {
                         var adminWindow = new AdminWindow(result.UserId!.Value, result.AdSoyad!);

@@ -56,6 +56,16 @@ namespace KutuphaneOtomasyon.Views
         
         private void Logout_Click(object sender, RoutedEventArgs e)
         {
+            DoLogout();
+        }
+        
+        private void Logout_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            DoLogout();
+        }
+        
+        private void DoLogout()
+        {
             if (MessageBox.Show("Çıkış yapmak istiyor musunuz?", "Çıkış", 
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {

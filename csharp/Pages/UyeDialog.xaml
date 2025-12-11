@@ -133,19 +133,12 @@
                 <!-- Butonlar -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="İptal" IsCancel="True"
-                            Background="Transparent" Foreground="#ef4444" BorderThickness="0"
-                            Margin="0,0,15,0" FontSize="14" Cursor="Hand"/>
+                            Style="{StaticResource GradientCancelButton}"
+                            Margin="0,0,15,0"/>
                     
                     <Button Content="Kaydet" Click="Kaydet_Click"
-                            Width="120" Height="45"
-                            Background="#3b82f6" Foreground="White" BorderThickness="0"
-                            FontSize="14" FontWeight="SemiBold" Cursor="Hand">
-                        <Button.Resources>
-                            <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="22"/>
-                            </Style>
-                        </Button.Resources>
-                    </Button>
+                            Style="{StaticResource GradientPrimaryButton}"
+                            Width="150"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

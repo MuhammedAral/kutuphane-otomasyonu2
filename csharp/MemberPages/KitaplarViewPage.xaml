@@ -61,7 +61,8 @@
         <Border Grid.Row="2" Background="#1f1f1f" CornerRadius="10">
             <DataGrid x:Name="dgKitaplar" AutoGenerateColumns="False"
                       Background="Transparent" Foreground="White"
-                      CanUserAddRows="False" IsReadOnly="True">
+                      CanUserAddRows="False" IsReadOnly="True"
+                      MouseDoubleClick="DataGrid_MouseDoubleClick">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="ID" Binding="{Binding KitapID}" Width="50"/>
                     <DataGridTextColumn Header="Kitap Adı" Binding="{Binding Baslik}" Width="*"/>

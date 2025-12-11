@@ -1,8 +1,9 @@
 <Window x:Class="KutuphaneOtomasyon.Pages.OduncDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="Yeni Ödünç İşlemi"
-        Height="380" Width="480"
+        Height="500" Width="480"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         Background="#1e1e2e"
@@ -14,9 +15,26 @@
             
             <!-- Kitap Arama -->
             <TextBlock Text="Kitap Ara *" Foreground="#8b8b9e" FontSize="11" Margin="0,0,0,3"/>
-            <TextBox x:Name="txtKitapAra" Height="32" Background="#252536" Foreground="White" 
-                     BorderBrush="#3a3a4e" BorderThickness="1" Padding="8,6" FontSize="12" Margin="0,0,0,3"
-                     TextChanged="KitapAra_TextChanged"/>
+            
+            <Grid Margin="0,0,0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBox x:Name="txtKitapAra" Grid.Column="0" Height="32" Background="#252536" Foreground="White" 
+                         BorderBrush="#3a3a4e" BorderThickness="1" Padding="8,6" FontSize="12"
+                         TextChanged="KitapAra_TextChanged" />
+                         
+                <Button Grid.Column="1" Click="BarkodTara_Click"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Background="#3b82f6" BorderBrush="#3b82f6"
+                        Height="32" Width="45" Margin="5,0,0,0" Padding="0"
+                        ToolTip="Barkod Tara">
+                    <materialDesign:PackIcon Kind="BarcodeScan" Width="20" Height="20" Foreground="White"/>
+                </Button>
+            </Grid>
+            
             <ListBox x:Name="lstKitaplar" Height="70" Background="#252536" Foreground="White" 
                      BorderBrush="#3a3a4e" BorderThickness="1" Margin="0,0,0,10"
                      SelectionChanged="Kitap_Selected">
@@ -58,11 +76,11 @@
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                     <Button Content="İptal" Click="Iptal_Click" 
-                            Background="#6b6b7e" Foreground="White" BorderThickness="0"
-                            Width="80" Height="32" FontSize="12" Margin="0,0,8,0"/>
+                            Style="{StaticResource GradientCancelButton}"
+                            Width="90" Margin="0,0,8,0"/>
                     <Button Content="Ödünç Ver" Click="Kaydet_Click" 
-                            Background="#1e40af" Foreground="White" BorderThickness="0"
-                            Width="90" Height="32" FontSize="12"/>
+                            Style="{StaticResource GradientPrimaryButton}"
+                            Width="120"/>
                 </StackPanel>
             </Grid>
         </StackPanel>

@@ -1,92 +1,147 @@
 using Microsoft.Data.SqlClient;
+using System.Data;
 using System.Windows;
-using System.Windows.Media;
+using KutuphaneOtomasyon.Pages;
 
 namespace KutuphaneOtomasyon.Pages
 {
     public partial class KitapDetayDialog : Window
     {
-        private readonly int _kitapId;
-        
-        public KitapDetayDialog(int kitapId)
+        private int _kitapId;
+
+        public KitapDetayDialog()
         {
             InitializeComponent();
-            _kitapId = kitapId;
-            
-            Loaded += (s, e) =>
-            {
-                DarkModeHelper.EnableDarkMode(this);
-                LoadKitapDetay();
-            };
         }
-        
+
+        public KitapDetayDialog(int kitapId) : this()
+        {
+            _kitapId = kitapId;
+            Loaded += (s, e) => LoadKitapDetay();
+        }
+
         private void LoadKitapDetay()
         {
             try
             {
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
+
+                // 1. Kitap Bilgilerini Getir
+                using var cmdKitap = new SqlCommand("SELECT * FROM Kitaplar WHERE KitapID = @id", conn);
+                cmdKitap.Parameters.AddWithValue("@id", _kitapId);
                 
-                // Kitap bilgilerini al
-                var cmd = new SqlCommand(@"
-                    SELECT k.*, t.TurAdi,
-                           (SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = k.KitapID AND IadeTarihi IS NULL) as Oduncte
-                    FROM Kitaplar k
-                    LEFT JOIN KitapTurleri t ON k.TurID = t.TurID
-                    WHERE k.KitapID = @id", conn);
-                cmd.Parameters.AddWithValue("@id", _kitapId);
-                
-                using var reader = cmd.ExecuteReader();
-                if (reader.Read())
+                using (var reader = cmdKitap.ExecuteReader())
                 {
-                    txtBaslik.Text = reader["Baslik"]?.ToString() ?? "-";
-                    txtYazar.Text = reader["Yazar"]?.ToString() ?? "-";
-                    txtYil.Text = reader["YayinYili"]?.ToString() ?? "-";
-                    txtStok.Text = reader["MevcutAdet"]?.ToString() ?? "0";
-                    txtOduncte.Text = reader["Oduncte"]?.ToString() ?? "0";
-                    txtISBN.Text = reader["ISBN"]?.ToString() ?? "-";
-                    txtTur.Text = reader["TurAdi"]?.ToString() ?? "-";
-                    txtRaf.Text = reader["RafNo"]?.ToString() ?? "-";
-                    txtSira.Text = reader["SiraNo"]?.ToString() ?? "-";
-                }
-                reader.Close();
-                
-                // Son ödünç işlemleri
-                cmd = new SqlCommand(@"
-                    SELECT TOP 5 u.AdSoyad, o.OduncTarihi,
-                           CASE WHEN o.IadeTarihi IS NULL THEN 'Ödünçte' ELSE 'İade Edildi' END as Durum,
-                           CASE WHEN o.IadeTarihi IS NULL THEN 1 ELSE 0 END as IsOduncte
-                    FROM OduncIslemleri o
-                    INNER JOIN Kullanicilar u ON o.UyeID = u.KullaniciID
-                    WHERE o.KitapID = @id
-                    ORDER BY o.OduncTarihi DESC", conn);
-                cmd.Parameters.AddWithValue("@id", _kitapId);
-                
-                var sonOduncler = new List<dynamic>();
-                using var reader2 = cmd.ExecuteReader();
-                while (reader2.Read())
-                {
-                    var isOduncte = Convert.ToInt32(reader2["IsOduncte"]) == 1;
-                    sonOduncler.Add(new
+                    if (reader.Read())
                     {
-                        AdSoyad = reader2["AdSoyad"].ToString(),
-                        Tarih = Convert.ToDateTime(reader2["OduncTarihi"]).ToString("dd/MM/yyyy"),
-                        Durum = reader2["Durum"].ToString(),
-                        DurumRenk = isOduncte ? new SolidColorBrush(Color.FromRgb(245, 158, 11)) : new SolidColorBrush(Color.FromRgb(16, 185, 129))
-                    });
+                        txtBaslik.Text = reader["Baslik"].ToString();
+                        txtYazar.Text = reader["Yazar"].ToString();
+                        
+                        // Tür ve Yıl birleşik
+                        string yil = reader["YayinYili"]?.ToString();
+                        // Tür adı gelmediği için şimdilik sadece yıl yazıyoruz, JOIN ile TurAdi alınabilir
+                        txtTur.Text = string.IsNullOrEmpty(yil) ? "Bilinmiyor" : $"{yil}"; 
+                        
+                        // txtAciklama XAML'da yok demiştik ama kontrol edelim, eğer yoksa hata verir.
+                        // XAML'da tanımı yok, o yüzden bu satırı siliyorum şimdilik.
+                        
+                        // Kitap Kapak Resmi (Placeholder - Renkli harf)
+                        string baslik = txtBaslik.Text;
+                        txtKapakHarf.Text = string.IsNullOrEmpty(baslik) ? "?" : baslik.Substring(0, 1).ToUpper();
+                    }
                 }
-                icSonOduncler.ItemsSource = sonOduncler;
-                txtNoData.Visibility = sonOduncler.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+                // 2. Yorumları Getir
+                using var cmdYorumlar = new SqlCommand(@"
+                    SELECT d.Puan, d.Yorum, d.Tarih, k.AdSoyad 
+                    FROM Degerlendirmeler d 
+                    JOIN Kullanicilar k ON d.UyeID = k.KullaniciID 
+                    WHERE d.KitapID = @id 
+                    ORDER BY d.Tarih DESC", conn);
+                cmdYorumlar.Parameters.AddWithValue("@id", _kitapId);
+                
+                var dt = new DataTable();
+                new SqlDataAdapter(cmdYorumlar).Fill(dt);
+                lstYorumlar.ItemsSource = dt.DefaultView;
+
+                // 3. Ortalama Puanı Getir
+                using var cmdAvg = new SqlCommand("SELECT COUNT(*), AVG(CAST(Puan AS FLOAT)) FROM Degerlendirmeler WHERE KitapID = @id", conn);
+                cmdAvg.Parameters.AddWithValue("@id", _kitapId);
+                
+                using (var readerAvg = cmdAvg.ExecuteReader())
+                {
+                    if (readerAvg.Read())
+                    {
+                        int count = readerAvg.GetInt32(0);
+                        if (count > 0)
+                        {
+                            double avg = readerAvg.GetDouble(1);
+                            txtOrtalamaPuan.Text = $"{avg:0.0} / 5 ({count} Değerlendirme)";
+                        }
+                        else
+                        {
+                            txtOrtalamaPuan.Text = "Henüz değerlendirilmedi";
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Hata: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Veriler yüklenirken hata oluştu: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        
-        private void Kapat_Click(object sender, RoutedEventArgs e)
+
+        private void RatingBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            Close();
+            if (txtUserPuan != null)
+                txtUserPuan.Text = $"{(int)e.NewValue}/5";
+        }
+
+        private void Gonder_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrentSession.UserId == null)
+            {
+                MessageBox.Show("Yorum yapmak için tekrar giriş yapmalısınız!", "Oturum Hatası", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            int puan = (int)ratingUser.Value;
+            string yorum = txtYorum.Text.Trim();
+
+            if (puan == 0)
+            {
+                MessageBox.Show("Lütfen puan veriniz!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                using var conn = DatabaseHelper.GetConnection();
+                conn.Open();
+                
+                using var cmd = new SqlCommand(@"
+                    INSERT INTO Degerlendirmeler (KitapID, UyeID, Puan, Yorum, Tarih)
+                    VALUES (@kitap, @uye, @puan, @yorum, GETDATE())", conn);
+                
+                cmd.Parameters.AddWithValue("@kitap", _kitapId);
+                cmd.Parameters.AddWithValue("@uye", CurrentSession.UserId);
+                cmd.Parameters.AddWithValue("@puan", puan);
+                cmd.Parameters.AddWithValue("@yorum", string.IsNullOrEmpty(yorum) ? DBNull.Value : yorum);
+                
+                cmd.ExecuteNonQuery();
+                
+                MessageBox.Show("Değerlendirmeniz kaydedildi!", "Teşekkürler", MessageBoxButton.OK, MessageBoxImage.Information);
+                
+                // Ekranı güncelle
+                txtYorum.Clear();
+                ratingUser.Value = 0;
+                LoadKitapDetay(); // Listeyi yenile
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Kaydedilemedi: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

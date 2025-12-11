@@ -18,6 +18,7 @@
             <StackPanel>
                 
                 <!-- Başlık -->
+                <Image Source="/Assets/logo.png" Width="70" Height="70" HorizontalAlignment="Center" Margin="0,0,0,15"/>
                 <TextBlock Text="Üye Kaydı" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
                 <TextBlock Text="Kütüphane üyesi olmak için bilgilerinizi girin" FontSize="12" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,5,0,25"/>
                 
@@ -123,20 +124,13 @@
                 
                 <!-- Kayıt Ol Butonu -->
                 <Button x:Name="btnRegister" Content="Kayıt Ol" Click="Register_Click"
-                        Height="45" FontSize="14" FontWeight="SemiBold" Cursor="Hand" Margin="0,0,0,15"
-                        Background="#3b82f6" Foreground="White" BorderThickness="0">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="22"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                        Style="{StaticResource GradientPrimaryButton}"
+                        Margin="0,0,0,15"/>
                 
                 <!-- Giriş Ekranına Dön -->
                 <Button Content="Giriş Ekranına Dön" Click="Back_Click"
-                        HorizontalAlignment="Center" Background="Transparent"
-                        Foreground="#60a5fa" BorderThickness="0"
-                        FontSize="12" Cursor="Hand"/>
+                        Style="{StaticResource GradientPrimaryButton}"
+                        HorizontalAlignment="Center" Height="32" FontSize="12"/>
                 
             </StackPanel>
         </Border>

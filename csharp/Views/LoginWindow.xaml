@@ -22,7 +22,7 @@
             </Border.Effect>
             
             <StackPanel>
-                <TextBlock Text="📚" FontSize="60" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <Image Source="/Assets/logo.png" Width="80" Height="80" HorizontalAlignment="Center" Margin="0,0,0,10"/>
                 
                 <TextBlock Text="Kütüphane Sistemi" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,5"/>
                 <TextBlock Text="Lütfen giriş yapın" FontSize="14" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,0,0,30"/>
@@ -74,15 +74,8 @@
                 
                 <!-- Giriş Butonu -->
                 <Button x:Name="btnLogin" Content="Giriş Yap" Click="Login_Click"
-                        Background="#3b82f6" Foreground="White" BorderThickness="0"
-                        Height="45" FontSize="15" FontWeight="SemiBold" Cursor="Hand"
-                        Margin="0,0,0,20">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="8"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                        Style="{StaticResource GradientPrimaryButton}"
+                        Margin="0,0,0,20"/>
                 
                 <Separator Background="#3f3f5a" Margin="0,0,0,20"/>
                 
@@ -90,8 +83,8 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <TextBlock Text="Hesabınız yok mu?" Foreground="#9ca3af" VerticalAlignment="Center" FontSize="13"/>
                     <Button Content="Hemen Kayıt Ol" Click="Register_Click"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Foreground="#60a5fa" FontSize="13" Padding="5,0" Margin="5,0,0,0"/>
+                            Style="{StaticResource GradientPrimaryButton}"
+                            Height="32" FontSize="12" Margin="10,0,0,0"/>
                 </StackPanel>
             </StackPanel>
         </Border>

@@ -5,6 +5,7 @@ using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.ComponentModel;
 using System.Windows.Data;
 using System.Collections.ObjectModel;
@@ -36,7 +37,7 @@ namespace KutuphaneOtomasyon.Pages
                 dt.Columns.Add("TurAdi", typeof(string));
                 dt.Rows.Add(0, "Tüm Türler");
                 
-                var cmd = new SqlCommand("SELECT TurID, TurAdi FROM KitapTurleri ORDER BY TurAdi", conn);
+                using var cmd = new SqlCommand("SELECT TurID, TurAdi FROM KitapTurleri ORDER BY TurAdi", conn);
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -46,7 +47,10 @@ namespace KutuphaneOtomasyon.Pages
                 cmbTur.ItemsSource = dt.DefaultView;
                 cmbTur.SelectedIndex = 0;
             }
-            catch { }
+            catch (Exception)
+            {
+                // Tür listesi yüklenemezse uygulama çalışmaya devam eder
+            }
         }
         
         private void LoadKitaplar(string search = "")
@@ -82,7 +86,7 @@ namespace KutuphaneOtomasyon.Pages
                 
                 query += " ORDER BY k.KitapID DESC";
                 
-                var cmd = new SqlCommand(query, conn);
+                using var cmd = new SqlCommand(query, conn);
                 if (!string.IsNullOrEmpty(search))
                     cmd.Parameters.AddWithValue("@search", $"%{search}%");
                 if (selectedTur != null && Convert.ToInt32(selectedTur["TurID"]) > 0)
@@ -133,6 +137,17 @@ namespace KutuphaneOtomasyon.Pages
                     (e.OriginalSource is FrameworkElement fe && fe.Parent is CheckBox))
                 {
                     return; 
+                }
+                
+                // Button kontrolü - İşlem butonlarına tıklandığında satır seçimini engelleme
+                var source = e.OriginalSource as DependencyObject;
+                while (source != null && source != row)
+                {
+                    if (source is Button)
+                    {
+                        return; // Buton tıklandığında müdahale etme
+                    }
+                    source = VisualTreeHelper.GetParent(source);
                 }
 
                 // Tıklanılan satırın ŞU ANKİ durumunu al
@@ -214,28 +229,76 @@ namespace KutuphaneOtomasyon.Pages
             var seciliKitaplar = KitaplarListesi.Where(k => k.IsSelected).ToList();
             if (seciliKitaplar.Count == 0) return;
 
-            if (MessageBox.Show($"{seciliKitaplar.Count} kitabı kalıcı olarak silmek istiyor musunuz?", "Toplu Silme Onayı",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            try
             {
-                try
+                using var conn = DatabaseHelper.GetConnection();
+                conn.Open();
+                
+                // Aktif ödünçteki kitapları kontrol et
+                var activeBookIds = new List<int>();
+                foreach (var kitap in seciliKitaplar)
                 {
-                    using var conn = DatabaseHelper.GetConnection();
-                    conn.Open();
-
-                    foreach (var kitap in seciliKitaplar)
+                    using var checkCmd = new SqlCommand(
+                        "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id AND IadeTarihi IS NULL", conn);
+                    checkCmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                    if ((int)checkCmd.ExecuteScalar() > 0)
                     {
-                        var cmd = new SqlCommand("DELETE FROM Kitaplar WHERE KitapID = @id", conn);
+                        activeBookIds.Add(kitap.KitapID);
+                    }
+                }
+                
+                if (activeBookIds.Count > 0)
+                {
+                    var silinebilir = seciliKitaplar.Count - activeBookIds.Count;
+                    var result = MessageBox.Show(
+                        $"{activeBookIds.Count} kitap şu anda ödünçte ve silinemez!\n\n" +
+                        $"Geri kalan {silinebilir} kitabı silmek ister misiniz?",
+                        "Uyarı", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    
+                    if (result != MessageBoxResult.Yes) return;
+                    
+                    // Aktif olanları listeden çıkar
+                    seciliKitaplar = seciliKitaplar.Where(k => !activeBookIds.Contains(k.KitapID)).ToList();
+                }
+                else
+                {
+                    if (MessageBox.Show($"{seciliKitaplar.Count} kitabı ve ilişkili kayıtları kalıcı olarak silmek istiyor musunuz?", 
+                        "Toplu Silme Onayı", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                        return;
+                }
+                
+                int silinen = 0;
+                foreach (var kitap in seciliKitaplar)
+                {
+                    // 1. Değerlendirmeleri sil
+                    using (var cmd = new SqlCommand("DELETE FROM Degerlendirmeler WHERE KitapID = @id", conn))
+                    {
                         cmd.Parameters.AddWithValue("@id", kitap.KitapID);
                         cmd.ExecuteNonQuery();
                     }
+                    
+                    // 2. Ödünç kayıtlarını sil
+                    using (var cmd = new SqlCommand("DELETE FROM OduncIslemleri WHERE KitapID = @id", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                        cmd.ExecuteNonQuery();
+                    }
+                    
+                    // 3. Kitabı sil
+                    using (var cmd = new SqlCommand("DELETE FROM Kitaplar WHERE KitapID = @id", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                        cmd.ExecuteNonQuery();
+                        silinen++;
+                    }
+                }
 
-                    LoadKitaplar();
-                    MessageBox.Show("Seçilen kitaplar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Silme hatası: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                LoadKitaplar();
+                MessageBox.Show($"{silinen} kitap ve ilişkili kayıtlar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Silme hatası: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
@@ -263,6 +326,12 @@ namespace KutuphaneOtomasyon.Pages
             if (sender is Button btn && btn.DataContext is KitapItem kitap)
                 return kitap;
             return null;
+        }
+        
+        // İşlem butonlarına tıklandığında satır seçimini engellemek için
+        private void ActionButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = false; // Butonun kendi Click olayının çalışmasına izin ver
         }
         
         private void Detay_Click(object sender, RoutedEventArgs e)
@@ -307,21 +376,63 @@ namespace KutuphaneOtomasyon.Pages
                 var kitap = GetKitapFromButton(sender);
                 if (kitap == null) return;
                 
-                if (MessageBox.Show($"'{kitap.Baslik}' kitabını silmek istiyor musunuz?", "Silme Onayı",
+                // Önce bu kitaba ait aktif ödünç var mı kontrol et
+                using var conn = DatabaseHelper.GetConnection();
+                conn.Open();
+                
+                using var checkActiveCmd = new SqlCommand(
+                    "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id AND IadeTarihi IS NULL", conn);
+                checkActiveCmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                int activeLoans = (int)checkActiveCmd.ExecuteScalar();
+                
+                if (activeLoans > 0)
+                {
+                    MessageBox.Show($"Bu kitap şu anda {activeLoans} kişide ödünçte!\n\n" +
+                        "Önce ödünç işlemlerinin tamamlanması gerekiyor.", 
+                        "Silinemez", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                
+                // Geçmiş ödünç kayıtları var mı?
+                using var checkHistoryCmd = new SqlCommand(
+                    "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id", conn);
+                checkHistoryCmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                int historyCount = (int)checkHistoryCmd.ExecuteScalar();
+                
+                string message = $"'{kitap.Baslik}' kitabını silmek istiyor musunuz?";
+                if (historyCount > 0)
+                {
+                    message += $"\n\n⚠️ Bu kitaba ait {historyCount} ödünç kaydı da silinecek!";
+                }
+                
+                if (MessageBox.Show(message, "Silme Onayı",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    using var conn = DatabaseHelper.GetConnection();
-                    conn.Open();
-                    var cmd = new SqlCommand("DELETE FROM Kitaplar WHERE KitapID = @id", conn);
-                    cmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                    cmd.ExecuteNonQuery();
+                    // 1. Önce değerlendirmeleri sil
+                    using var deleteRatingsCmd = new SqlCommand(
+                        "DELETE FROM Degerlendirmeler WHERE KitapID = @id", conn);
+                    deleteRatingsCmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                    deleteRatingsCmd.ExecuteNonQuery();
+                    
+                    // 2. Sonra ödünç kayıtlarını sil
+                    using var deleteLoansCmd = new SqlCommand(
+                        "DELETE FROM OduncIslemleri WHERE KitapID = @id", conn);
+                    deleteLoansCmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                    deleteLoansCmd.ExecuteNonQuery();
+                    
+                    // 3. Son olarak kitabı sil
+                    using var deleteBookCmd = new SqlCommand(
+                        "DELETE FROM Kitaplar WHERE KitapID = @id", conn);
+                    deleteBookCmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                    deleteBookCmd.ExecuteNonQuery();
+                    
                     LoadKitaplar();
-                    MessageBox.Show("Kitap silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Kitap ve ilişkili kayıtlar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Silinemedi: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Silme hatası: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
@@ -369,29 +480,63 @@ namespace KutuphaneOtomasyon.Pages
                 if (openDialog.ShowDialog() == true)
                 {
                     int eklenen = 0;
+                    int hatali = 0;
+                    var hataListesi = new System.Text.StringBuilder();
+
                     using var conn = DatabaseHelper.GetConnection();
                     conn.Open();
                     
                     if (openDialog.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                     {
                         var lines = System.IO.File.ReadAllLines(openDialog.FileName, System.Text.Encoding.UTF8);
+                        int rowNum = 1;
                         foreach (var line in lines.Skip(1))
                         {
+                            rowNum++;
                             var parts = line.Split(',');
-                            if (parts.Length < 2) continue;
+                            if (parts.Length < 4) // En az Barkod'a kadar kolon olmalı
+                            {
+                                hatali++;
+                                continue;
+                            }
                             
                             var baslik = parts[0].Trim();
                             var yazar = parts[1].Trim();
+                            // parts[2] ISBN, parts[3] Barkod olarak varsayıyoruz (CSV formatına göre)
+                            var barkod = parts[3].Trim(); 
+                            
+                            // Eğer Barkod boşsa ISBN'i dene
+                            if (string.IsNullOrEmpty(barkod) && parts.Length > 2)
+                                barkod = parts[2].Trim();
+
                             if (string.IsNullOrEmpty(baslik)) continue;
 
-                            var yilStr = parts.Length > 3 ? parts[3].Trim() : "";
-                            var stokStr = parts.Length > 4 ? parts[4].Trim() : "1";
+                            // BARKOD DOĞRULAMA (13 Haneli ve Dolu Olmalı)
+                            if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
+                            {
+                                hatali++;
+                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz veya eksik barkod ({barkod})");
+                                continue;
+                            }
+
+                            // Veritabanında aynı barkod var mı kontrolü
+                            if (IsBarcodeExists(conn, barkod))
+                            {
+                                hatali++;
+                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Bu barkod zaten sistemde kayıtlı ({barkod})");
+                                continue;
+                            }
+
+                            var yilStr = parts.Length > 4 ? parts[4].Trim() : "";
+                            var stokStr = parts.Length > 6 ? parts[6].Trim() : "1";
+                            var rafNo = parts.Length > 7 ? parts[7].Trim() : "";
+                            var siraNo = parts.Length > 8 ? parts[8].Trim() : "";
 
                             int.TryParse(yilStr, out var yil);
                             int.TryParse(stokStr, out var stok);
                             if (stok <= 0) stok = 1;
                             
-                            InsertKitap(conn, baslik, yazar, yil, stok);
+                            InsertKitap(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
                             eklenen++;
                         }
                     }
@@ -401,28 +546,60 @@ namespace KutuphaneOtomasyon.Pages
                         var worksheet = workbook.Worksheet(1);
                         var rows = worksheet.RangeUsed().RowsUsed().Skip(1);
                         
+                        int rowNum = 1;
                         foreach (var row in rows)
                         {
+                            rowNum++;
                             var baslik = row.Cell(1).GetString().Trim();
                             var yazar = row.Cell(2).GetString().Trim();
+                            // Col 3: ISBN, Col 4: Barkod
+                            var barkod = row.Cell(4).GetString().Trim();
                             
+                            if (string.IsNullOrEmpty(barkod))
+                                barkod = row.Cell(3).GetString().Trim();
+
                             if (string.IsNullOrEmpty(baslik)) continue;
                             
-                            var yilStr = row.Cell(4).GetString().Trim(); 
-                            var stokStr = row.Cell(5).GetString().Trim(); 
+                            // BARKOD DOĞRULAMA
+                            if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
+                            {
+                                hatali++;
+                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz veya eksik barkod ({barkod})");
+                                continue;
+                            }
+
+                            // Veritabanında aynı barkod var mı kontrolü
+                            if (IsBarcodeExists(conn, barkod))
+                            {
+                                hatali++;
+                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Bu barkod zaten sistemde kayıtlı ({barkod})");
+                                continue;
+                            }
+                            
+                            var yilStr = row.Cell(5).GetString().Trim(); 
+                            // Col 6 is TurID
+                            var stokStr = row.Cell(7).GetString().Trim(); 
+                            var rafNo = row.Cell(8).GetString().Trim();
+                            var siraNo = row.Cell(9).GetString().Trim();
 
                             int.TryParse(yilStr, out var yil);
                             int.TryParse(stokStr, out var stok);
                             if (stok <= 0) stok = 1;
                             
-                            InsertKitap(conn, baslik, yazar, yil, stok);
+                            InsertKitap(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
                             eklenen++;
                         }
                     }
                     
                     LoadKitaplar();
-                    MessageBox.Show($"{eklenen} kitap başarıyla eklendi!", "İçe Aktarma Tamamlandı", 
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    string sonucMesaji = $"{eklenen} kitap başarıyla eklendi.";
+                    if (hatali > 0)
+                    {
+                        sonucMesaji += $"\n\n⚠️ {hatali} kitap eklenemedi (Barkod hatası veya mükerrer).";
+                    }
+                    
+                    MessageBox.Show(sonucMesaji, "İçe Aktarma Sonucu", MessageBoxButton.OK, hatali > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -430,19 +607,27 @@ namespace KutuphaneOtomasyon.Pages
                 MessageBox.Show($"İçe aktarma hatası: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        
-        private void InsertKitap(SqlConnection conn, string baslik, string yazar, int yil, int stok)
+
+        private bool IsBarcodeExists(SqlConnection conn, string barcode)
         {
-            string isbn = Guid.NewGuid().ToString("N").Substring(0, 13).ToUpper();
+            using var cmd = new SqlCommand("SELECT COUNT(*) FROM Kitaplar WHERE ISBN = @barcode", conn);
+            cmd.Parameters.AddWithValue("@barcode", barcode);
+            return (int)cmd.ExecuteScalar() > 0;
+        }
+        
+        private void InsertKitap(SqlConnection conn, string baslik, string yazar, int yil, int stok, string barkod, string rafNo, string siraNo)
+        {
             var cmd = new SqlCommand(@"
-                INSERT INTO Kitaplar (Baslik, Yazar, YayinYili, StokAdedi, MevcutAdet, ISBN, TurID)
-                VALUES (@baslik, @yazar, @yil, @stok, @stok, @isbn, 1)", conn); 
+                INSERT INTO Kitaplar (Baslik, Yazar, YayinYili, StokAdedi, MevcutAdet, ISBN, TurID, RafNo, SiraNo)
+                VALUES (@baslik, @yazar, @yil, @stok, @stok, @isbn, 1, @raf, @sira)", conn); 
             
             cmd.Parameters.AddWithValue("@baslik", baslik);
             cmd.Parameters.AddWithValue("@yazar", yazar);
             cmd.Parameters.AddWithValue("@yil", yil > 0 ? yil : DBNull.Value);
             cmd.Parameters.AddWithValue("@stok", stok);
-            cmd.Parameters.AddWithValue("@isbn", isbn);
+            cmd.Parameters.AddWithValue("@isbn", barkod);
+            cmd.Parameters.AddWithValue("@raf", string.IsNullOrEmpty(rafNo) ? DBNull.Value : rafNo);
+            cmd.Parameters.AddWithValue("@sira", string.IsNullOrEmpty(siraNo) ? DBNull.Value : siraNo);
             
             cmd.ExecuteNonQuery();
         }
@@ -523,17 +708,17 @@ namespace KutuphaneOtomasyon.Pages
         }
 
         public int KitapID { get; set; }
-        public string Baslik { get; set; }
-        public string Yazar { get; set; }
-        public string ISBN { get; set; }
-        public string TurAdi { get; set; }
+        public string Baslik { get; set; } = string.Empty;
+        public string Yazar { get; set; } = string.Empty;
+        public string ISBN { get; set; } = string.Empty;
+        public string TurAdi { get; set; } = string.Empty;
         public int? YayinYili { get; set; }
         public int StokAdedi { get; set; }
         public int MevcutAdet { get; set; }
         public int TurID { get; set; }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }

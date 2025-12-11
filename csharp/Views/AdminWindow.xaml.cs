@@ -15,10 +15,10 @@ namespace KutuphaneOtomasyon.Views
             Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
             _userId = userId;
             _adSoyad = adSoyad;
-            txtAdminName.Text = $"👤 {adSoyad} (Yönetici)";
+            txtAdminName.Text = adSoyad;
             
             // İlk sayfa
-            Kitaplar_Click(btnKitaplar, null!);
+            Dashboard_Click(btnDashboard, null!);
         }
         
         private void SetActiveButton(Button button)
@@ -29,6 +29,12 @@ namespace KutuphaneOtomasyon.Views
             button.Background = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#3b82f6"));
             _activeButton = button;
+        }
+
+        private void Dashboard_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveButton((Button)sender);
+            MainFrame.Navigate(new Pages.DashboardPage());
         }
         
         private void Kitaplar_Click(object sender, RoutedEventArgs e)
@@ -62,6 +68,16 @@ namespace KutuphaneOtomasyon.Views
         }
         
         private void Logout_Click(object sender, RoutedEventArgs e)
+        {
+            DoLogout();
+        }
+        
+        private void Logout_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            DoLogout();
+        }
+        
+        private void DoLogout()
         {
             if (MessageBox.Show("Çıkış yapmak istiyor musunuz?", "Çıkış", 
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)

@@ -9,6 +9,40 @@
         Background="#1e1e2e"
         Icon="/Assets/logo.png">
     
+    <Window.Resources>
+        <!-- Modern Menü Buton Stili -->
+        <Style x:Key="ModernMenuButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="10" Padding="15,0">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#3b82f6" Offset="0"/>
+                                            <GradientStop Color="#8b5cf6" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="250"/>
@@ -17,41 +51,59 @@
         
         <!-- Sidebar -->
         <Border Grid.Column="0" Background="#1a1a2e">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                
-                <StackPanel Grid.Row="0" Margin="20,30,20,20">
+            <DockPanel>
+                <!-- Profil (Üstte) -->
+                <StackPanel DockPanel.Dock="Top" Margin="20,30,20,20">
                     <TextBlock x:Name="txtUserName" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
                     <TextBlock Text="Kütüphane Üyesi" FontSize="11" Foreground="#9ca3af" HorizontalAlignment="Center" Margin="0,5,0,0"/>
                     <Border Height="1" Background="#2d2d44" Margin="0,20,0,0"/>
                 </StackPanel>
                 
-                <StackPanel Grid.Row="1" Margin="15,10,15,0">
-                    <Button x:Name="btnAnasayfa" Content="🏠  Ana Sayfa" Click="Anasayfa_Click"
-                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
-                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
-                    
-                    <Button x:Name="btnKitaplar" Content="📚  Kitaplar" Click="Kitaplar_Click"
-                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
-                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
-                    
-                    <Button x:Name="btnOdunclerim" Content="📖  Ödünç Aldıklarım" Click="Odunclerim_Click"
-                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
-                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
-                    
-                    <Button x:Name="btnProfil" Content="⚙️  Profilim" Click="Profil_Click"
-                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White"
-                            Height="45" HorizontalContentAlignment="Left" Padding="15,0"/>
-                </StackPanel>
+                <!-- Çıkış Butonu (Altta Sabit) -->
+                <Border DockPanel.Dock="Bottom" Margin="15,15,15,20" CornerRadius="10" Height="42" Cursor="Hand" MouseLeftButtonDown="Logout_Border_Click">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#b91c1c" Offset="0"/>
+                            <GradientStop Color="#f87171" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="🚪" FontSize="14" Foreground="White" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Çıkış Yap" FontSize="13" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
                 
-                <Button Grid.Row="2" Content="🚪  Çıkış Yap" Click="Logout_Click"
-                        Background="#dc2626" Foreground="White"
-                        Height="45" Margin="15,0,15,20" Style="{StaticResource MaterialDesignRaisedButton}"/>
-            </Grid>
+                <!-- Menü Butonları (Ortada) -->
+                <StackPanel Margin="15,10,15,0">
+                    <Button x:Name="btnAnasayfa" Click="Anasayfa_Click" Style="{StaticResource ModernMenuButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🏠" Width="25" FontSize="16" TextAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="Ana Sayfa" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Button x:Name="btnKitaplar" Click="Kitaplar_Click" Style="{StaticResource ModernMenuButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📚" Width="25" FontSize="16" TextAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="Kitaplar" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Button x:Name="btnOdunclerim" Click="Odunclerim_Click" Style="{StaticResource ModernMenuButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📖" Width="25" FontSize="16" TextAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="Ödünç Aldıklarım" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Button x:Name="btnProfil" Click="Profil_Click" Style="{StaticResource ModernMenuButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚙️" Width="25" FontSize="16" TextAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="Profilim" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
         </Border>
         
         <!-- İçerik -->

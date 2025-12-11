@@ -5,7 +5,7 @@
       Title="Ödünç İşlemleri"
       Background="#1e1e2e">
     
-    <Grid Margin="25">
+    <Grid Margin="30">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -13,91 +13,157 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
-            <TextBlock Text="🔄 Ödünç İşlemleri" FontSize="22" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
-            <Button Content="+ Yeni Ödünç" Click="YeniOdunc_Click" 
-                    Background="#1e40af" Foreground="White" BorderThickness="0"
-                    Margin="20,0,0,0" Height="36" Padding="16,0" FontSize="12"/>
-        </StackPanel>
+        <!-- Header with Gradient -->
+        <Border Grid.Row="0" Margin="0,0,0,25">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="📚 Ödünç İşlemleri" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Kitap ödünç verme ve iade işlemlerini yönetin" 
+                               FontSize="13" Foreground="#8b8b9e" Margin="0,5,0,0"/>
+                </StackPanel>
+                
+                <Button Grid.Column="1" Click="YeniOdunc_Click" Cursor="Hand"
+                        Height="48" Padding="24,0">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border" CornerRadius="12">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#3b82f6" Offset="0"/>
+                                        <GradientStop Color="#8b5cf6" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.4" Color="#3b82f6"/>
+                                </Border.Effect>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0">
+                                    <TextBlock Text="➕" FontSize="16" VerticalAlignment="Center" Foreground="White"/>
+                                    <TextBlock Text="Yeni Ödünç Ver" FontSize="14" FontWeight="SemiBold" 
+                                               Foreground="White" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.6" Color="#8b5cf6"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
         
-        <!-- İstatistik Kartları -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,15">
-            <Border Background="#252536" CornerRadius="8" Padding="15,10" Margin="0,0,15,0">
+        <!-- İstatistik Kartları - Basit ve Temiz -->
+        <Grid Grid.Row="1" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Aktif Ödünç -->
+            <Border Grid.Column="0" Background="#252536" CornerRadius="12" Padding="20" Margin="0,0,10,0">
                 <StackPanel>
-                    <TextBlock Text="Aktif Ödünç" Foreground="#8b8b9e" FontSize="11"/>
-                    <TextBlock x:Name="txtAktifOdunc" Text="0" Foreground="#3b82f6" FontSize="20" FontWeight="Bold"/>
+                    <TextBlock Text="📖 Aktif Ödünç" Foreground="#8b8b9e" FontSize="13" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="txtAktifOdunc" Text="0" Foreground="#3b82f6" FontSize="28" FontWeight="Bold"/>
                 </StackPanel>
             </Border>
-            <Border Background="#252536" CornerRadius="8" Padding="15,10" Margin="0,0,15,0">
+            
+            <!-- Geciken -->
+            <Border Grid.Column="1" Background="#252536" CornerRadius="12" Padding="20" Margin="5,0,5,0">
                 <StackPanel>
-                    <TextBlock Text="Geciken" Foreground="#8b8b9e" FontSize="11"/>
-                    <TextBlock x:Name="txtGeciken" Text="0" Foreground="#ef4444" FontSize="20" FontWeight="Bold"/>
+                    <TextBlock Text="⚠️ Geciken" Foreground="#8b8b9e" FontSize="13" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="txtGeciken" Text="0" Foreground="#ef4444" FontSize="28" FontWeight="Bold"/>
                 </StackPanel>
             </Border>
-            <Border Background="#252536" CornerRadius="8" Padding="15,10">
+            
+            <!-- Toplam Ücret -->
+            <Border Grid.Column="2" Background="#252536" CornerRadius="12" Padding="20" Margin="5,0,5,0">
                 <StackPanel>
-                    <TextBlock Text="Toplam Gecikme Ücreti" Foreground="#8b8b9e" FontSize="11"/>
-                    <TextBlock x:Name="txtToplamUcret" Text="₺0.00" Foreground="#f59e0b" FontSize="20" FontWeight="Bold"/>
+                    <TextBlock Text="💰 Gecikme Ücreti" Foreground="#8b8b9e" FontSize="13" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="txtToplamUcret" Text="₺0.00" Foreground="#f59e0b" FontSize="28" FontWeight="Bold"/>
                 </StackPanel>
             </Border>
-        </StackPanel>
+            
+            <!-- Bugün İade -->
+            <Border Grid.Column="3" Background="#252536" CornerRadius="12" Padding="20" Margin="10,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="✅ Bugün İade" Foreground="#8b8b9e" FontSize="13" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="txtBugunIade" Text="0" Foreground="#10b981" FontSize="28" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+        </Grid>
         
+        <!-- Arama ve Filtreler -->
         <Grid Grid.Row="2" Margin="0,0,0,15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="350"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Modern Arama Kutusu -->
-            <Border Grid.Column="0" Background="#252536" CornerRadius="22" Height="40">
+            <!-- Arama Kutusu -->
+            <Border Grid.Column="0" Background="#252536" CornerRadius="8" Height="40">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     
-                    <TextBlock Text="🔍" Grid.Column="0" VerticalAlignment="Center" Margin="15,0,5,0" 
+                    <TextBlock Text="🔍" Grid.Column="0" VerticalAlignment="Center" Margin="12,0,8,0" 
                                FontSize="14" Foreground="#8b8b9e"/>
                     
                     <TextBox x:Name="txtSearch" Grid.Column="1"
-                             materialDesign:HintAssist.Hint="Kitap adı veya üye ara..."
+                             materialDesign:HintAssist.Hint="Kitap veya üye ara..."
                              materialDesign:HintAssist.Foreground="#666680"
                              Background="Transparent" BorderThickness="0"
                              Foreground="White" FontSize="13"
-                             VerticalContentAlignment="Center" Padding="5,0,15,0"
-                             Margin="0"
+                             VerticalContentAlignment="Center" Padding="5,0,10,0"
                              TextChanged="Search_TextChanged"
+                             materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
                              CaretBrush="#3b82f6"/>
                 </Grid>
             </Border>
 
             <!-- Filtreler -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Right">
-                <RadioButton x:Name="rbTum" Content="Tümü" IsChecked="True" 
-                             Foreground="#c8c8d8" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
-                <RadioButton x:Name="rbOdunc" Content="Ödünçte" 
-                             Foreground="#c8c8d8" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
-                <RadioButton x:Name="rbGeciken" Content="Geciken" 
-                             Foreground="#ef4444" Margin="0,0,20,0" Checked="Filter_Changed" FontSize="13"/>
-                <RadioButton x:Name="rbIade" Content="İade Edilmiş" 
-                             Foreground="#c8c8d8" Checked="Filter_Changed" FontSize="13"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <RadioButton x:Name="rbTum" Content="Tümü" IsChecked="True" Checked="Filter_Changed" 
+                             Foreground="#c8c8d8" Margin="0,0,15,0" FontSize="13"/>
+                <RadioButton x:Name="rbOdunc" Content="Ödünçte" Checked="Filter_Changed" 
+                             Foreground="#3b82f6" Margin="0,0,15,0" FontSize="13"/>
+                <RadioButton x:Name="rbGeciken" Content="Geciken" Checked="Filter_Changed" 
+                             Foreground="#ef4444" Margin="0,0,15,0" FontSize="13"/>
+                <RadioButton x:Name="rbIade" Content="İade Edilmiş" Checked="Filter_Changed" 
+                             Foreground="#10b981" FontSize="13"/>
             </StackPanel>
         </Grid>
         
-        <Border Grid.Row="3" Background="#252536" CornerRadius="8" Padding="1">
-            <DataGrid x:Name="dgOdunc" AutoGenerateColumns="False"
-                      Background="#252536" Foreground="#c8c8d8"
-                      GridLinesVisibility="Horizontal"
-                      BorderThickness="0"
-                      CanUserAddRows="False" IsReadOnly="True"
-                      RowBackground="#252536"
-                      AlternatingRowBackground="#2a2a3e"
-                      FontSize="13">
+        <!-- DataGrid -->
+        <DataGrid x:Name="dgOdunc" Grid.Row="3" AutoGenerateColumns="False"
+                  Background="#252536" Foreground="#c8c8d8"
+                  GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="#3a3a4e"
+                  BorderThickness="0"
+                  CanUserAddRows="False" IsReadOnly="True"
+                  RowBackground="#252536"
+                  AlternatingRowBackground="#252536"
+                  FontSize="13"
+                  HeadersVisibility="Column"
+                  RowHeight="50">
                 <DataGrid.ColumnHeaderStyle>
                     <Style TargetType="DataGridColumnHeader">
                         <Setter Property="Background" Value="#1e1e2e"/>
                         <Setter Property="Foreground" Value="#8b8b9e"/>
-                        <Setter Property="Padding" Value="10,12"/>
+                        <Setter Property="Padding" Value="15,14"/>
                         <Setter Property="FontWeight" Value="SemiBold"/>
                         <Setter Property="FontSize" Value="12"/>
                         <Setter Property="BorderThickness" Value="0"/>
@@ -105,31 +171,130 @@
                 </DataGrid.ColumnHeaderStyle>
                 <DataGrid.CellStyle>
                     <Style TargetType="DataGridCell">
-                        <Setter Property="Padding" Value="10,8"/>
+                        <Setter Property="Padding" Value="15,10"/>
                         <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Foreground" Value="#c8c8d8"/>
+                        <Setter Property="Foreground" Value="#e0e0e0"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                        <ContentPresenter VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#3a3a55"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </Style.Triggers>
                     </Style>
                 </DataGrid.CellStyle>
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3a3a55"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#3a3a55"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="ID" Binding="{Binding IslemID}" Width="50"/>
-                    <DataGridTextColumn Header="Kitap" Binding="{Binding Baslik}" Width="*"/>
-                    <DataGridTextColumn Header="Üye" Binding="{Binding AdSoyad}" Width="130"/>
-                    <DataGridTextColumn Header="Ödünç" Binding="{Binding OduncTarihi, StringFormat=dd/MM/yy}" Width="75"/>
-                    <DataGridTextColumn Header="Son İade" Binding="{Binding BeklenenIadeTarihi, StringFormat=dd/MM/yy}" Width="75"/>
-                    <DataGridTextColumn Header="Gecikme" Binding="{Binding GecikmeGun}" Width="65"/>
-                    <DataGridTextColumn Header="Ücret" Binding="{Binding GecikmeUcreti, StringFormat=₺{0:F2}}" Width="70"/>
-                    <DataGridTextColumn Header="Durum" Binding="{Binding Durum}" Width="70"/>
-                    <DataGridTemplateColumn Header="İşlem" Width="70">
+                    <DataGridTemplateColumn Header="Kitap" Width="*" MinWidth="120">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Content="İade" Click="IadeAl_Click" 
-                                        Background="#1e40af" Foreground="White"
-                                        Width="55" Height="26" FontSize="11" BorderThickness="0"/>
+                                <TextBlock Text="{Binding Baslik}" FontWeight="Medium" Foreground="White" 
+                                           VerticalAlignment="Center" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="Üye" Width="*" MinWidth="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding AdSoyad}" Foreground="#c8c8d8" VerticalAlignment="Center" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="Ödünç" Width="85">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding OduncTarihi, StringFormat=dd/MM/yy}" 
+                                           Foreground="#8b8b9e" FontSize="10" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="İade" Width="85">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding BeklenenIadeTarihi, StringFormat=dd/MM/yy}" 
+                                           Foreground="#f59e0b" FontSize="10" FontWeight="Medium" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="Gecikme" Width="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding GecikmeGun}" 
+                                           Foreground="#ef4444" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="Ücret" Width="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding GecikmeUcreti, StringFormat=₺{0:F0}}" 
+                                           Foreground="#f59e0b" FontWeight="Bold" FontSize="10" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="Durum" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Durum}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#10b981"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Durum}" Value="Ödünçte">
+                                                    <Setter Property="Foreground" Value="#3b82f6"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTemplateColumn Header="" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="İade Al" Click="IadeAl_Click" 
+                                        Background="#10b981" Foreground="White" BorderThickness="0"
+                                        Padding="12,6" FontSize="11" FontWeight="SemiBold" Cursor="Hand">
+                                    <Button.Resources>
+                                        <Style TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="6"/>
+                                        </Style>
+                                    </Button.Resources>
+                                </Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
-        </Border>
     </Grid>
 </Page>

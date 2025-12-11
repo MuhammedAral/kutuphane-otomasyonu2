@@ -25,11 +25,11 @@ namespace KutuphaneOtomasyon.Pages
                 var gecikmeUcreti = DatabaseHelper.GetGecikmeUcreti();
                 
                 // Aktif ödünç sayısı
-                var cmdAktif = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL", conn);
+                using var cmdAktif = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL", conn);
                 txtAktifOdunc.Text = cmdAktif.ExecuteScalar()?.ToString() ?? "0";
                 
                 // Geciken sayısı ve toplam ücret
-                var cmdGeciken = new SqlCommand(@"
+                using var cmdGeciken = new SqlCommand(@"
                     SELECT COUNT(*) as Geciken, 
                            ISNULL(SUM(DATEDIFF(DAY, BeklenenIadeTarihi, GETDATE())), 0) as ToplamGun
                     FROM OduncIslemleri 
@@ -42,8 +42,18 @@ namespace KutuphaneOtomasyon.Pages
                     var toplamGun = Convert.ToInt32(reader["ToplamGun"]);
                     txtToplamUcret.Text = $"₺{(toplamGun * gecikmeUcreti):F2}";
                 }
+                reader.Close();
+                
+                // Bugün iade edilenler
+                using var cmdBugun = new SqlCommand(@"
+                    SELECT COUNT(*) FROM OduncIslemleri 
+                    WHERE CAST(IadeTarihi AS DATE) = CAST(GETDATE() AS DATE)", conn);
+                txtBugunIade.Text = cmdBugun.ExecuteScalar()?.ToString() ?? "0";
             }
-            catch { }
+            catch (Exception)
+            {
+                // İstatistikler kritik değil, sayfa yüklenmeye devam eder
+            }
         }
         
         private void LoadOduncler()
@@ -143,12 +153,12 @@ namespace KutuphaneOtomasyon.Pages
                         using var conn = DatabaseHelper.GetConnection();
                         conn.Open();
                         
-                        // İade işlemi
-                        var cmd = new SqlCommand(@"
-                            UPDATE OduncIslemleri SET IadeTarihi = GETDATE() WHERE IslemID = @id;
+                        using var cmd = new SqlCommand(@"
+                            UPDATE OduncIslemleri SET IadeTarihi = GETDATE(), CezaMiktari = @ceza WHERE IslemID = @id;
                             UPDATE Kitaplar SET MevcutAdet = MevcutAdet + 1 
                             WHERE KitapID = (SELECT KitapID FROM OduncIslemleri WHERE IslemID = @id)", conn);
                         cmd.Parameters.AddWithValue("@id", row["IslemID"]);
+                        cmd.Parameters.AddWithValue("@ceza", gecikmeUcreti);
                         cmd.ExecuteNonQuery();
                         
                         LoadOduncler();
@@ -177,5 +187,16 @@ namespace KutuphaneOtomasyon.Pages
         {
             if (_isLoaded) LoadOduncler();
         }
+
+        private void BarkodTara_Click(object sender, RoutedEventArgs e)
+        {
+            var scanner = new BarcodeScannerDialog();
+            if (scanner.ShowDialog() == true)
+            {
+                txtSearch.Text = scanner.ScannedBarcode;
+            }
+        }
     }
 }
+
+

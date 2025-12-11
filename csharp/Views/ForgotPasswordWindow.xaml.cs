@@ -33,7 +33,7 @@ namespace KutuphaneOtomasyon.Views
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
                 
-                var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
+                using var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
                 checkCmd.Parameters.AddWithValue("@user", username);
                 if ((int)checkCmd.ExecuteScalar() == 0)
                 {
@@ -42,7 +42,7 @@ namespace KutuphaneOtomasyon.Views
                 }
                 
                 var hash = DatabaseHelper.HashPassword(password);
-                var updateCmd = new SqlCommand("UPDATE Kullanicilar SET Sifre = @pass WHERE KullaniciAdi = @user", conn);
+                using var updateCmd = new SqlCommand("UPDATE Kullanicilar SET Sifre = @pass WHERE KullaniciAdi = @user", conn);
                 updateCmd.Parameters.AddWithValue("@pass", hash);
                 updateCmd.Parameters.AddWithValue("@user", username);
                 updateCmd.ExecuteNonQuery();

@@ -25,7 +25,7 @@ namespace KutuphaneOtomasyon.MemberPages
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
                 
-                var cmd = new SqlCommand("SELECT AdSoyad, KullaniciAdi, Email, Telefon FROM Kullanicilar WHERE KullaniciID = @id", conn);
+                using var cmd = new SqlCommand("SELECT AdSoyad, KullaniciAdi, Email, Telefon FROM Kullanicilar WHERE KullaniciID = @id", conn);
                 cmd.Parameters.AddWithValue("@id", _userId);
                 
                 using var reader = cmd.ExecuteReader();
@@ -95,7 +95,7 @@ namespace KutuphaneOtomasyon.MemberPages
                 // Not: DatabaseHelper içinde Login kontrolü var ama hash'i doğrudan kontrol etsek daha hızlı (Login LastLogin güncelliyor olabilir)
                 // Basitlik için DatabaseHelper.HashPassword kullanıp veritabanındaki ile karşılaştıracağız.
                 
-                var verifyCmd = new SqlCommand("SELECT Sifre FROM Kullanicilar WHERE KullaniciID = @id", conn);
+                using var verifyCmd = new SqlCommand("SELECT Sifre FROM Kullanicilar WHERE KullaniciID = @id", conn);
                 verifyCmd.Parameters.AddWithValue("@id", _userId);
                 var storedHash = verifyCmd.ExecuteScalar()?.ToString();
 
@@ -106,7 +106,7 @@ namespace KutuphaneOtomasyon.MemberPages
                 }
 
                 // 2. Kullanıcı Adı Çakışma Kontrolü (Eğer değiştirdiyse)
-                var userCheckCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user AND KullaniciID != @id", conn);
+                using var userCheckCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user AND KullaniciID != @id", conn);
                 userCheckCmd.Parameters.AddWithValue("@user", username);
                 userCheckCmd.Parameters.AddWithValue("@id", _userId);
                 
@@ -126,7 +126,7 @@ namespace KutuphaneOtomasyon.MemberPages
                         " + (!string.IsNullOrEmpty(newPass) ? ", Sifre = @pass" : "") + @"
                     WHERE KullaniciID = @id";
 
-                var updateCmd = new SqlCommand(updateQuery, conn);
+                using var updateCmd = new SqlCommand(updateQuery, conn);
                 updateCmd.Parameters.AddWithValue("@ad", adSoyad);
                 updateCmd.Parameters.AddWithValue("@user", username);
                 updateCmd.Parameters.AddWithValue("@email", string.IsNullOrEmpty(email) ? DBNull.Value : email);
