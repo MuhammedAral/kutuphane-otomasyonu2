@@ -1,29 +1,145 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Data;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
 builder.Services.AddEndpointsApiExplorer();
+
+// Swagger Konfigürasyonu (Yetkilendirme Desteği ile)
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Kütüphane API", Version = "v1" });
+    
+    // Swagger'da kilit simgesi ekle
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Örnek: \"Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
 });
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+// JWT Authentication Ayarları
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(key)
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Configure
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.UseCors("AllowAll");
 
+app.UseAuthentication(); // Kimlik Doğrulama (Önce bu)
+app.UseAuthorization();  // Yetkilendirme (Sonra bu)
+
 // Database connection string
-var connectionString = "Server=localhost;Database=KutuphaneDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;";
+var connectionString = "Server=localhost;Database=KutuphaneDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;";
+
+// Yardımcı Metot: Şifre Hashleme
+string HashPassword(string password)
+{
+    using var sha256 = SHA256.Create();
+    var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+    return Convert.ToHexString(bytes).ToLower();
+}
+
+// ==================== GİRİŞ API (TOKEN ALMA) ====================
+
+app.MapPost("/api/giris", (LoginRequest request) =>
+{
+    if (string.IsNullOrEmpty(request.KullaniciAdi) || string.IsNullOrEmpty(request.Sifre))
+        return Results.BadRequest("Kullanıcı adı ve şifre gereklidir.");
+
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    var hash = HashPassword(request.Sifre);
+    var cmd = new SqlCommand("SELECT KullaniciID, AdSoyad, Rol FROM Kullanicilar WHERE KullaniciAdi = @user AND Sifre = @pass AND AktifMi = 1", conn);
+    cmd.Parameters.AddWithValue("@user", request.KullaniciAdi);
+    cmd.Parameters.AddWithValue("@pass", hash);
+
+    using var reader = cmd.ExecuteReader();
+    if (reader.Read())
+    {
+        var uid = reader.GetInt32(0);
+        var adSoyad = reader.GetString(1);
+        var rol = reader.GetString(2);
+
+        // Token Oluşturma
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenKey = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, uid.ToString()),
+                new Claim(ClaimTypes.Name, adSoyad),
+                new Claim(ClaimTypes.Role, rol)
+            }),
+            Expires = DateTime.UtcNow.AddHours(2), // Token 2 saat geçerli
+            Issuer = builder.Configuration["Jwt:Issuer"],
+            Audience = builder.Configuration["Jwt:Audience"],
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(tokenKey), SecurityAlgorithms.HmacSha256Signature)
+        };
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return Results.Ok(new { Token = tokenHandler.WriteToken(token), Mesaj = "Giriş Başarılı" });
+    }
+
+    return Results.Unauthorized();
+})
+.WithName("GirisYap")
+.WithTags("Giriş")
+.AllowAnonymous(); // Giriş herkese açık olmalı
 
 // ==================== KİTAPLAR API ====================
 
@@ -58,7 +174,8 @@ app.MapGet("/api/kitaplar", () =>
     return Results.Ok(kitaplar);
 })
 .WithName("GetKitaplar")
-.WithTags("Kitaplar");
+.WithTags("Kitaplar")
+.RequireAuthorization(); // ARTIK KİLİTLİ!
 
 app.MapGet("/api/kitaplar/{id}", (int id) =>
 {
@@ -87,7 +204,8 @@ app.MapGet("/api/kitaplar/{id}", (int id) =>
     return Results.NotFound(new { message = "Kitap bulunamadı" });
 })
 .WithName("GetKitap")
-.WithTags("Kitaplar");
+.WithTags("Kitaplar")
+.RequireAuthorization();
 
 app.MapPost("/api/kitaplar", (KitapRequest kitap) =>
 {
@@ -111,7 +229,8 @@ app.MapPost("/api/kitaplar", (KitapRequest kitap) =>
     return Results.Created($"/api/kitaplar/{id}", new { KitapID = id, message = "Kitap eklendi" });
 })
 .WithName("CreateKitap")
-.WithTags("Kitaplar");
+.WithTags("Kitaplar")
+.RequireAuthorization();
 
 app.MapPut("/api/kitaplar/{id}", (int id, KitapRequest kitap) =>
 {
@@ -136,7 +255,8 @@ app.MapPut("/api/kitaplar/{id}", (int id, KitapRequest kitap) =>
     return affected > 0 ? Results.Ok(new { message = "Kitap güncellendi" }) : Results.NotFound();
 })
 .WithName("UpdateKitap")
-.WithTags("Kitaplar");
+.WithTags("Kitaplar")
+.RequireAuthorization();
 
 app.MapDelete("/api/kitaplar/{id}", (int id) =>
 {
@@ -150,7 +270,8 @@ app.MapDelete("/api/kitaplar/{id}", (int id) =>
     return affected > 0 ? Results.Ok(new { message = "Kitap silindi" }) : Results.NotFound();
 })
 .WithName("DeleteKitap")
-.WithTags("Kitaplar");
+.WithTags("Kitaplar")
+.RequireAuthorization();
 
 // ==================== ÜYELER API ====================
 
@@ -182,7 +303,8 @@ app.MapGet("/api/uyeler", () =>
     return Results.Ok(uyeler);
 })
 .WithName("GetUyeler")
-.WithTags("Üyeler");
+.WithTags("Üyeler")
+.RequireAuthorization();
 
 app.MapGet("/api/uyeler/{id}", (int id) =>
 {
@@ -209,7 +331,8 @@ app.MapGet("/api/uyeler/{id}", (int id) =>
     return Results.NotFound(new { message = "Üye bulunamadı" });
 })
 .WithName("GetUye")
-.WithTags("Üyeler");
+.WithTags("Üyeler")
+.RequireAuthorization();
 
 // ==================== ÖDÜNÇ İŞLEMLERİ API ====================
 
@@ -243,7 +366,8 @@ app.MapGet("/api/odunc", () =>
     return Results.Ok(islemler);
 })
 .WithName("GetOdunc")
-.WithTags("Ödünç İşlemleri");
+.WithTags("Ödünç İşlemleri")
+.RequireAuthorization();
 
 app.MapPost("/api/odunc", (OduncRequest request) =>
 {
@@ -264,7 +388,8 @@ app.MapPost("/api/odunc", (OduncRequest request) =>
     return Results.Created($"/api/odunc/{id}", new { IslemID = id, message = "Ödünç verildi" });
 })
 .WithName("CreateOdunc")
-.WithTags("Ödünç İşlemleri");
+.WithTags("Ödünç İşlemleri")
+.RequireAuthorization();
 
 app.MapPut("/api/odunc/{id}/iade", (int id) =>
 {
@@ -281,7 +406,8 @@ app.MapPut("/api/odunc/{id}/iade", (int id) =>
     return affected > 0 ? Results.Ok(new { message = "Kitap iade alındı" }) : Results.NotFound();
 })
 .WithName("IadeAl")
-.WithTags("Ödünç İşlemleri");
+.WithTags("Ödünç İşlemleri")
+.RequireAuthorization();
 
 // ==================== KİTAP TÜRLERİ API ====================
 
@@ -300,7 +426,8 @@ app.MapGet("/api/turler", () =>
     return Results.Ok(turler);
 })
 .WithName("GetTurler")
-.WithTags("Kitap Türleri");
+.WithTags("Kitap Türleri")
+.RequireAuthorization();
 
 // ==================== İSTATİSTİKLER API ====================
 
@@ -323,11 +450,13 @@ app.MapGet("/api/istatistikler", () =>
     });
 })
 .WithName("GetIstatistikler")
-.WithTags("İstatistikler");
+.WithTags("İstatistikler")
+.RequireAuthorization();
 
 app.Run();
 
 // ==================== REQUEST MODELS ====================
 
+public record LoginRequest(string KullaniciAdi, string Sifre);
 public record KitapRequest(string Baslik, string Yazar, string? ISBN, int? YayinYili, int? TurID, int? StokAdedi, string? RafNo);
 public record OduncRequest(int KitapID, int UyeID, int? OduncGunu);

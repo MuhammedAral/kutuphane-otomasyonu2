@@ -55,21 +55,21 @@
             <ListView x:Name="lstYorumlar" Background="Transparent" BorderThickness="0">
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#252536" CornerRadius="10" Padding="10" Margin="0,0,0,10" Width="700">
+                        <Border Background="#252536" CornerRadius="10" Padding="15" Margin="0,0,0,15" Width="700">
                             <StackPanel>
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="👤" Foreground="#8b5cf6" Margin="0,0,5,0"/>
-                                        <TextBlock Text="{Binding AdSoyad}" FontWeight="Bold" Foreground="White"/>
+                                <Grid Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="👤" Foreground="#8b5cf6" Margin="0,0,8,0" FontSize="16"/>
+                                        <TextBlock Text="{Binding AdSoyad}" FontWeight="Bold" Foreground="White" FontSize="14" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Tarih, StringFormat=dd.MM.yyyy}" Foreground="#6b7280" HorizontalAlignment="Right" FontSize="11"/>
+                                    <TextBlock Text="{Binding Tarih, StringFormat=dd.MM.yyyy}" Foreground="#6b7280" HorizontalAlignment="Right" FontSize="12" VerticalAlignment="Center"/>
                                 </Grid>
                                 
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                                    <materialDesign:RatingBar Value="{Binding Puan}" IsReadOnly="True" Max="5" Height="15" Width="80" Foreground="#f59e0b"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <materialDesign:RatingBar Value="{Binding Puan}" IsReadOnly="True" Max="5" Height="18" Width="90" Foreground="#f59e0b"/>
                                 </StackPanel>
                                 
-                                <TextBlock Text="{Binding Yorum}" TextWrapping="Wrap" Foreground="#d1d5db" FontSize="13"/>
+                                <TextBlock Text="{Binding Yorum}" TextWrapping="Wrap" Foreground="#e5e7eb" FontSize="14" LineHeight="20"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>
