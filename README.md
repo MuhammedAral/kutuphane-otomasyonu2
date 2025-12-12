@@ -118,4 +118,4 @@ Bu proje eğitim amaçlı geliştirilmiştir.
 
 ---
 
-**Geliştirici:** Muhammed Ali Aral
+
