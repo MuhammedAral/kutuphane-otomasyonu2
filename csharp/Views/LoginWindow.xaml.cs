@@ -21,7 +21,7 @@ namespace KutuphaneOtomasyon.Views
             }
         }
         
-        private void Login_Click(object sender, RoutedEventArgs e)
+        private async void Login_Click(object sender, RoutedEventArgs e)
         {
             var username = txtUsername.Text.Trim();
             var password = txtPassword.Password;
@@ -37,9 +37,10 @@ namespace KutuphaneOtomasyon.Views
             
             try
             {
-                var result = DatabaseHelper.VerifyLogin(username, password);
+                // API üzerinden giriş yap
+                var result = await ApiService.LoginAsync(username, password);
                 
-                if (result.Success)
+                if (result != null && !string.IsNullOrEmpty(result.Token))
                 {
                     // Oturum bilgilerini sakla
                     CurrentSession.UserId = result.UserId;
@@ -60,14 +61,14 @@ namespace KutuphaneOtomasyon.Views
                 }
                 else
                 {
-                    MessageBox.Show(result.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("Kullanıcı adı veya şifre hatalı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
                     btnLogin.IsEnabled = true;
                     btnLogin.Content = "Giriş Yap";
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Bir hata oluştu: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Bir hata oluştu: {ex.Message}\n\nAPI çalışıyor mu kontrol edin.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
                 btnLogin.IsEnabled = true;
                 btnLogin.Content = "Giriş Yap";
             }

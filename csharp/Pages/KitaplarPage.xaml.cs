@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Npgsql;
 using Microsoft.Win32;
 using ClosedXML.Excel;
 using System.Data;
@@ -20,26 +20,31 @@ namespace KutuphaneOtomasyon.Pages
         public KitaplarPage()
         {
             InitializeComponent();
-            DataContext = this; // DataContext'i bu sayfaya bağla
-            LoadTurler();
-            LoadKitaplar();
+            DataContext = this;
+            Loaded += async (s, e) => await InitializeAsync();
         }
         
-        private void LoadTurler()
+        private async Task InitializeAsync()
+        {
+            await LoadTurlerAsync();
+            await LoadKitaplarAsync();
+        }
+        
+        private async Task LoadTurlerAsync()
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
+                await using var conn = DatabaseHelper.GetConnection();
+                await conn.OpenAsync();
                 
                 var dt = new DataTable();
                 dt.Columns.Add("TurID", typeof(int));
                 dt.Columns.Add("TurAdi", typeof(string));
                 dt.Rows.Add(0, "Tüm Türler");
                 
-                using var cmd = new SqlCommand("SELECT TurID, TurAdi FROM KitapTurleri ORDER BY TurAdi", conn);
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
+                await using var cmd = new NpgsqlCommand("SELECT TurID, TurAdi FROM KitapTurleri ORDER BY TurAdi", conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
                     dt.Rows.Add(reader["TurID"], reader["TurAdi"]);
                 }
@@ -53,68 +58,62 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
         
-        private void LoadKitaplar(string search = "")
+        private async Task LoadKitaplarAsync(string search = "")
         {
             try
             {
                 KitaplarListesi.Clear();
 
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
+                await using var conn = DatabaseHelper.GetConnection();
+                await conn.OpenAsync();
                 
                 var query = @"
-                    SELECT k.KitapID, k.Baslik, k.Yazar, ISNULL(k.ISBN, '') as ISBN, 
-                           ISNULL(kt.TurAdi, '-') as TurAdi, k.YayinYili, k.StokAdedi, k.MevcutAdet, k.TurID
+                    SELECT k.KitapID, k.Baslik, k.Yazar, COALESCE(k.ISBN, '') as ISBN, 
+                           COALESCE(kt.TurAdi, '-') as TurAdi, k.YayinYili, k.StokAdedi, k.MevcutAdet, k.TurID
                     FROM Kitaplar k
                     LEFT JOIN KitapTurleri kt ON k.TurID = kt.TurID
                     WHERE 1=1";
                 
-                // Arama filtresi
                 if (!string.IsNullOrEmpty(search))
                     query += " AND (k.Baslik LIKE @search OR k.Yazar LIKE @search OR k.ISBN LIKE @search)";
                 
-                // Tür filtresi
                 var selectedTur = cmbTur?.SelectedItem as DataRowView;
                 if (selectedTur != null && Convert.ToInt32(selectedTur["TurID"]) > 0)
                     query += " AND k.TurID = @turId";
                 
-                // Stok filtresi
-                if (cmbStok?.SelectedIndex == 1) // Stokta var
+                if (cmbStok?.SelectedIndex == 1)
                     query += " AND k.MevcutAdet > 0";
-                else if (cmbStok?.SelectedIndex == 2) // Stok yok
+                else if (cmbStok?.SelectedIndex == 2)
                     query += " AND k.MevcutAdet = 0";
                 
                 query += " ORDER BY k.KitapID DESC";
                 
-                using var cmd = new SqlCommand(query, conn);
+                await using var cmd = new NpgsqlCommand(query, conn);
                 if (!string.IsNullOrEmpty(search))
                     cmd.Parameters.AddWithValue("@search", $"%{search}%");
                 if (selectedTur != null && Convert.ToInt32(selectedTur["TurID"]) > 0)
                     cmd.Parameters.AddWithValue("@turId", selectedTur["TurID"]);
                 
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
                     KitaplarListesi.Add(new KitapItem
                     {
-                        KitapID = (int)reader["KitapID"],
+                        KitapID = Convert.ToInt32(reader["KitapID"]),
                         Baslik = reader["Baslik"].ToString(),
                         Yazar = reader["Yazar"].ToString(),
                         ISBN = reader["ISBN"].ToString(),
                         TurAdi = reader["TurAdi"].ToString(),
-                        YayinYili = reader["YayinYili"] != DBNull.Value ? (int)reader["YayinYili"] : null,
-                        StokAdedi = (int)reader["StokAdedi"],
-                        MevcutAdet = (int)reader["MevcutAdet"],
-                        TurID = reader["TurID"] != DBNull.Value ? (int)reader["TurID"] : 0
+                        YayinYili = reader["YayinYili"] != DBNull.Value ? Convert.ToInt32(reader["YayinYili"]) : null,
+                        StokAdedi = Convert.ToInt32(reader["StokAdedi"]),
+                        MevcutAdet = Convert.ToInt32(reader["MevcutAdet"]),
+                        TurID = reader["TurID"] != DBNull.Value ? Convert.ToInt32(reader["TurID"]) : 0
                     });
                 }
                 
-                // DataGrid ItemsSource'u XAML'den veya buradan bağla. 
-                // Biz XAML'de ItemsSource="{Binding KitaplarListesi}" kullanacağız ama code-behind'dan set etmek de garanti olur.
                 dgKitaplar.ItemsSource = KitaplarListesi;
-                
                 txtSonuc.Text = $"{KitaplarListesi.Count} kitap bulundu";
-                btnTopluSil.Visibility = Visibility.Collapsed; // Başlangıçta gizle
+                btnTopluSil.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
@@ -224,76 +223,44 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        private void TopluSil_Click(object sender, RoutedEventArgs e)
+        private async void TopluSil_Click(object sender, RoutedEventArgs e)
         {
             var seciliKitaplar = KitaplarListesi.Where(k => k.IsSelected).ToList();
             if (seciliKitaplar.Count == 0) return;
 
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
+                // Onay al
+                if (MessageBox.Show($"{seciliKitaplar.Count} kitabı ve ilişkili kayıtları kalıcı olarak silmek istiyor musunuz?", 
+                    "Toplu Silme Onayı", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    return;
                 
-                // Aktif ödünçteki kitapları kontrol et
-                var activeBookIds = new List<int>();
-                foreach (var kitap in seciliKitaplar)
-                {
-                    using var checkCmd = new SqlCommand(
-                        "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id AND IadeTarihi IS NULL", conn);
-                    checkCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                    if ((int)checkCmd.ExecuteScalar() > 0)
-                    {
-                        activeBookIds.Add(kitap.KitapID);
-                    }
-                }
-                
-                if (activeBookIds.Count > 0)
-                {
-                    var silinebilir = seciliKitaplar.Count - activeBookIds.Count;
-                    var result = MessageBox.Show(
-                        $"{activeBookIds.Count} kitap şu anda ödünçte ve silinemez!\n\n" +
-                        $"Geri kalan {silinebilir} kitabı silmek ister misiniz?",
-                        "Uyarı", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                    
-                    if (result != MessageBoxResult.Yes) return;
-                    
-                    // Aktif olanları listeden çıkar
-                    seciliKitaplar = seciliKitaplar.Where(k => !activeBookIds.Contains(k.KitapID)).ToList();
-                }
-                else
-                {
-                    if (MessageBox.Show($"{seciliKitaplar.Count} kitabı ve ilişkili kayıtları kalıcı olarak silmek istiyor musunuz?", 
-                        "Toplu Silme Onayı", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                        return;
-                }
-                
+                var kitapIds = seciliKitaplar.Select(k => k.KitapID).ToList();
                 int silinen = 0;
-                foreach (var kitap in seciliKitaplar)
+                
+                // Arka planda sil - TEK SORGU ile toplu silme (çok daha hızlı!)
+                await Task.Run(() =>
                 {
-                    // 1. Değerlendirmeleri sil
-                    using (var cmd = new SqlCommand("DELETE FROM Degerlendirmeler WHERE KitapID = @id", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                        cmd.ExecuteNonQuery();
-                    }
+                    using var conn = DatabaseHelper.GetConnection();
+                    conn.Open();
                     
-                    // 2. Ödünç kayıtlarını sil
-                    using (var cmd = new SqlCommand("DELETE FROM OduncIslemleri WHERE KitapID = @id", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                        cmd.ExecuteNonQuery();
-                    }
+                    // ID listesini virgülle ayır
+                    var idList = string.Join(",", kitapIds);
                     
-                    // 3. Kitabı sil
-                    using (var cmd = new SqlCommand("DELETE FROM Kitaplar WHERE KitapID = @id", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", kitap.KitapID);
+                    // 1. Değerlendirmeleri toplu sil
+                    using (var cmd = new NpgsqlCommand($"DELETE FROM Degerlendirmeler WHERE KitapID IN ({idList})", conn))
                         cmd.ExecuteNonQuery();
-                        silinen++;
-                    }
-                }
+                    
+                    // 2. Ödünç kayıtlarını toplu sil
+                    using (var cmd = new NpgsqlCommand($"DELETE FROM OduncIslemleri WHERE KitapID IN ({idList})", conn))
+                        cmd.ExecuteNonQuery();
+                    
+                    // 3. Kitapları toplu sil
+                    using (var cmd = new NpgsqlCommand($"DELETE FROM Kitaplar WHERE KitapID IN ({idList})", conn))
+                        silinen = cmd.ExecuteNonQuery();
+                });
 
-                LoadKitaplar();
+                await LoadKitaplarAsync();
                 MessageBox.Show($"{silinen} kitap ve ilişkili kayıtlar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -304,7 +271,7 @@ namespace KutuphaneOtomasyon.Pages
         
         private void Filter_Changed(object sender, SelectionChangedEventArgs e)
         {
-            if (IsLoaded) LoadKitaplar(txtSearch?.Text?.Trim() ?? "");
+            if (IsLoaded) _ = LoadKitaplarAsync(txtSearch?.Text?.Trim() ?? "");
         }
         
         private void YeniKitap_Click(object sender, RoutedEventArgs e)
@@ -313,7 +280,7 @@ namespace KutuphaneOtomasyon.Pages
             {
                 var dialog = new KitapDialog();
                 if (dialog.ShowDialog() == true)
-                    LoadKitaplar();
+                    _ = LoadKitaplarAsync();
             }
             catch (Exception ex)
             {
@@ -361,7 +328,7 @@ namespace KutuphaneOtomasyon.Pages
                 
                 var dialog = new KitapDialog(kitap.KitapID);
                 if (dialog.ShowDialog() == true)
-                    LoadKitaplar();
+                    _ = LoadKitaplarAsync();
             }
             catch (Exception ex)
             {
@@ -380,10 +347,10 @@ namespace KutuphaneOtomasyon.Pages
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
                 
-                using var checkActiveCmd = new SqlCommand(
+                using var checkActiveCmd = new NpgsqlCommand(
                     "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id AND IadeTarihi IS NULL", conn);
                 checkActiveCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                int activeLoans = (int)checkActiveCmd.ExecuteScalar();
+                int activeLoans = Convert.ToInt32(checkActiveCmd.ExecuteScalar());
                 
                 if (activeLoans > 0)
                 {
@@ -394,10 +361,10 @@ namespace KutuphaneOtomasyon.Pages
                 }
                 
                 // Geçmiş ödünç kayıtları var mı?
-                using var checkHistoryCmd = new SqlCommand(
+                using var checkHistoryCmd = new NpgsqlCommand(
                     "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id", conn);
                 checkHistoryCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                int historyCount = (int)checkHistoryCmd.ExecuteScalar();
+                int historyCount = Convert.ToInt32(checkHistoryCmd.ExecuteScalar());
                 
                 string message = $"'{kitap.Baslik}' kitabını silmek istiyor musunuz?";
                 if (historyCount > 0)
@@ -409,24 +376,24 @@ namespace KutuphaneOtomasyon.Pages
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     // 1. Önce değerlendirmeleri sil
-                    using var deleteRatingsCmd = new SqlCommand(
+                    using var deleteRatingsCmd = new NpgsqlCommand(
                         "DELETE FROM Degerlendirmeler WHERE KitapID = @id", conn);
                     deleteRatingsCmd.Parameters.AddWithValue("@id", kitap.KitapID);
                     deleteRatingsCmd.ExecuteNonQuery();
                     
                     // 2. Sonra ödünç kayıtlarını sil
-                    using var deleteLoansCmd = new SqlCommand(
+                    using var deleteLoansCmd = new NpgsqlCommand(
                         "DELETE FROM OduncIslemleri WHERE KitapID = @id", conn);
                     deleteLoansCmd.Parameters.AddWithValue("@id", kitap.KitapID);
                     deleteLoansCmd.ExecuteNonQuery();
                     
                     // 3. Son olarak kitabı sil
-                    using var deleteBookCmd = new SqlCommand(
+                    using var deleteBookCmd = new NpgsqlCommand(
                         "DELETE FROM Kitaplar WHERE KitapID = @id", conn);
                     deleteBookCmd.Parameters.AddWithValue("@id", kitap.KitapID);
                     deleteBookCmd.ExecuteNonQuery();
                     
-                    LoadKitaplar();
+                    _ = LoadKitaplarAsync();
                     MessageBox.Show("Kitap ve ilişkili kayıtlar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
@@ -466,7 +433,7 @@ namespace KutuphaneOtomasyon.Pages
 // Import ve Export kodları da uyarlanmış haliyle aşağıda
 
 
-        private void ExcelImport_Click(object sender, RoutedEventArgs e)
+        private async void ExcelImport_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -482,116 +449,113 @@ namespace KutuphaneOtomasyon.Pages
                     int eklenen = 0;
                     int hatali = 0;
                     var hataListesi = new System.Text.StringBuilder();
+                    var fileName = openDialog.FileName;
 
-                    using var conn = DatabaseHelper.GetConnection();
-                    conn.Open();
-                    
-                    if (openDialog.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                    // Arka planda çalıştır - UI donmayacak
+                    await Task.Run(async () =>
                     {
-                        var lines = System.IO.File.ReadAllLines(openDialog.FileName, System.Text.Encoding.UTF8);
-                        int rowNum = 1;
-                        foreach (var line in lines.Skip(1))
-                        {
-                            rowNum++;
-                            var parts = line.Split(',');
-                            if (parts.Length < 4) // En az Barkod'a kadar kolon olmalı
-                            {
-                                hatali++;
-                                continue;
-                            }
-                            
-                            var baslik = parts[0].Trim();
-                            var yazar = parts[1].Trim();
-                            // parts[2] ISBN, parts[3] Barkod olarak varsayıyoruz (CSV formatına göre)
-                            var barkod = parts[3].Trim(); 
-                            
-                            // Eğer Barkod boşsa ISBN'i dene
-                            if (string.IsNullOrEmpty(barkod) && parts.Length > 2)
-                                barkod = parts[2].Trim();
-
-                            if (string.IsNullOrEmpty(baslik)) continue;
-
-                            // BARKOD DOĞRULAMA (13 Haneli ve Dolu Olmalı)
-                            if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
-                            {
-                                hatali++;
-                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz veya eksik barkod ({barkod})");
-                                continue;
-                            }
-
-                            // Veritabanında aynı barkod var mı kontrolü
-                            if (IsBarcodeExists(conn, barkod))
-                            {
-                                hatali++;
-                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Bu barkod zaten sistemde kayıtlı ({barkod})");
-                                continue;
-                            }
-
-                            var yilStr = parts.Length > 4 ? parts[4].Trim() : "";
-                            var stokStr = parts.Length > 6 ? parts[6].Trim() : "1";
-                            var rafNo = parts.Length > 7 ? parts[7].Trim() : "";
-                            var siraNo = parts.Length > 8 ? parts[8].Trim() : "";
-
-                            int.TryParse(yilStr, out var yil);
-                            int.TryParse(stokStr, out var stok);
-                            if (stok <= 0) stok = 1;
-                            
-                            InsertKitap(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
-                            eklenen++;
-                        }
-                    }
-                    else
-                    {
-                        using var workbook = new XLWorkbook(openDialog.FileName);
-                        var worksheet = workbook.Worksheet(1);
-                        var rows = worksheet.RangeUsed().RowsUsed().Skip(1);
+                        await using var conn = DatabaseHelper.GetConnection();
+                        await conn.OpenAsync();
                         
-                        int rowNum = 1;
-                        foreach (var row in rows)
+                        if (fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                         {
-                            rowNum++;
-                            var baslik = row.Cell(1).GetString().Trim();
-                            var yazar = row.Cell(2).GetString().Trim();
-                            // Col 3: ISBN, Col 4: Barkod
-                            var barkod = row.Cell(4).GetString().Trim();
-                            
-                            if (string.IsNullOrEmpty(barkod))
-                                barkod = row.Cell(3).GetString().Trim();
-
-                            if (string.IsNullOrEmpty(baslik)) continue;
-                            
-                            // BARKOD DOĞRULAMA
-                            if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
+                            var lines = System.IO.File.ReadAllLines(fileName, System.Text.Encoding.UTF8);
+                            int rowNum = 1;
+                            foreach (var line in lines.Skip(1))
                             {
-                                hatali++;
-                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz veya eksik barkod ({barkod})");
-                                continue;
-                            }
+                                rowNum++;
+                                var parts = line.Split(',');
+                                if (parts.Length < 4)
+                                {
+                                    hatali++;
+                                    continue;
+                                }
+                                
+                                var baslik = parts[0].Trim();
+                                var yazar = parts[1].Trim();
+                                var barkod = parts[3].Trim(); 
+                                
+                                if (string.IsNullOrEmpty(barkod) && parts.Length > 2)
+                                    barkod = parts[2].Trim();
 
-                            // Veritabanında aynı barkod var mı kontrolü
-                            if (IsBarcodeExists(conn, barkod))
-                            {
-                                hatali++;
-                                hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Bu barkod zaten sistemde kayıtlı ({barkod})");
-                                continue;
-                            }
-                            
-                            var yilStr = row.Cell(5).GetString().Trim(); 
-                            // Col 6 is TurID
-                            var stokStr = row.Cell(7).GetString().Trim(); 
-                            var rafNo = row.Cell(8).GetString().Trim();
-                            var siraNo = row.Cell(9).GetString().Trim();
+                                if (string.IsNullOrEmpty(baslik)) continue;
 
-                            int.TryParse(yilStr, out var yil);
-                            int.TryParse(stokStr, out var stok);
-                            if (stok <= 0) stok = 1;
-                            
-                            InsertKitap(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
-                            eklenen++;
+                                if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
+                                {
+                                    hatali++;
+                                    hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz barkod ({barkod})");
+                                    continue;
+                                }
+
+                                if (await IsBarcodeExistsAsync(conn, barkod))
+                                {
+                                    hatali++;
+                                    hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Mükerrer barkod ({barkod})");
+                                    continue;
+                                }
+
+                                var yilStr = parts.Length > 4 ? parts[4].Trim() : "";
+                                var stokStr = parts.Length > 6 ? parts[6].Trim() : "1";
+                                var rafNo = parts.Length > 7 ? parts[7].Trim() : "";
+                                var siraNo = parts.Length > 8 ? parts[8].Trim() : "";
+
+                                int.TryParse(yilStr, out var yil);
+                                int.TryParse(stokStr, out var stok);
+                                if (stok <= 0) stok = 1;
+                                
+                                await InsertKitapAsync(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
+                                eklenen++;
+                            }
                         }
-                    }
+                        else
+                        {
+                            using var workbook = new XLWorkbook(fileName);
+                            var worksheet = workbook.Worksheet(1);
+                            var rows = worksheet.RangeUsed().RowsUsed().Skip(1);
+                            
+                            int rowNum = 1;
+                            foreach (var row in rows)
+                            {
+                                rowNum++;
+                                var baslik = row.Cell(1).GetString().Trim();
+                                var yazar = row.Cell(2).GetString().Trim();
+                                var barkod = row.Cell(4).GetString().Trim();
+                                
+                                if (string.IsNullOrEmpty(barkod))
+                                    barkod = row.Cell(3).GetString().Trim();
+
+                                if (string.IsNullOrEmpty(baslik)) continue;
+                                
+                                if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
+                                {
+                                    hatali++;
+                                    hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz barkod ({barkod})");
+                                    continue;
+                                }
+
+                                if (await IsBarcodeExistsAsync(conn, barkod))
+                                {
+                                    hatali++;
+                                    hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Mükerrer barkod ({barkod})");
+                                    continue;
+                                }
+                                
+                                var yilStr = row.Cell(5).GetString().Trim(); 
+                                var stokStr = row.Cell(7).GetString().Trim(); 
+                                var rafNo = row.Cell(8).GetString().Trim();
+                                var siraNo = row.Cell(9).GetString().Trim();
+
+                                int.TryParse(yilStr, out var yil);
+                                int.TryParse(stokStr, out var stok);
+                                if (stok <= 0) stok = 1;
+                                
+                                await InsertKitapAsync(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
+                                eklenen++;
+                            }
+                        }
+                    });
                     
-                    LoadKitaplar();
+                    await LoadKitaplarAsync();
 
                     string sonucMesaji = $"{eklenen} kitap başarıyla eklendi.";
                     if (hatali > 0)
@@ -608,16 +572,16 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        private bool IsBarcodeExists(SqlConnection conn, string barcode)
+        private async Task<bool> IsBarcodeExistsAsync(NpgsqlConnection conn, string barcode)
         {
-            using var cmd = new SqlCommand("SELECT COUNT(*) FROM Kitaplar WHERE ISBN = @barcode", conn);
+            await using var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM Kitaplar WHERE ISBN = @barcode", conn);
             cmd.Parameters.AddWithValue("@barcode", barcode);
-            return (int)cmd.ExecuteScalar() > 0;
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync()) > 0;
         }
         
-        private void InsertKitap(SqlConnection conn, string baslik, string yazar, int yil, int stok, string barkod, string rafNo, string siraNo)
+        private async Task InsertKitapAsync(NpgsqlConnection conn, string baslik, string yazar, int yil, int stok, string barkod, string rafNo, string siraNo)
         {
-            var cmd = new SqlCommand(@"
+            await using var cmd = new NpgsqlCommand(@"
                 INSERT INTO Kitaplar (Baslik, Yazar, YayinYili, StokAdedi, MevcutAdet, ISBN, TurID, RafNo, SiraNo)
                 VALUES (@baslik, @yazar, @yil, @stok, @stok, @isbn, 1, @raf, @sira)", conn); 
             
@@ -629,10 +593,10 @@ namespace KutuphaneOtomasyon.Pages
             cmd.Parameters.AddWithValue("@raf", string.IsNullOrEmpty(rafNo) ? DBNull.Value : rafNo);
             cmd.Parameters.AddWithValue("@sira", string.IsNullOrEmpty(siraNo) ? DBNull.Value : siraNo);
             
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
         }
         
-        private void ExcelExport_Click(object sender, RoutedEventArgs e)
+        private async void ExcelExport_Click(object sender, RoutedEventArgs e)
         {
              try
             {
@@ -645,37 +609,45 @@ namespace KutuphaneOtomasyon.Pages
                 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    using var conn = DatabaseHelper.GetConnection();
-                    conn.Open();
+                    var fileName = saveDialog.FileName;
+                    int rowCount = 0;
                     
-                    var query = @"
-                        SELECT k.KitapID as 'ID', k.Baslik as 'Kitap Adı', k.Yazar, 
-                               ISNULL(k.ISBN, '') as 'ISBN', k.YayinYili as 'Yayın Yılı',
-                               ISNULL(kt.TurAdi, '') as 'Tür', k.StokAdedi as 'Stok', 
-                               k.MevcutAdet as 'Mevcut', ISNULL(k.RafNo, '') as 'Raf No',
-                               ISNULL(k.SiraNo, '') as 'Sıra No'
-                        FROM Kitaplar k
-                        LEFT JOIN KitapTurleri kt ON k.TurID = kt.TurID
-                        ORDER BY k.KitapID";
+                    await Task.Run(async () =>
+                    {
+                        await using var conn = DatabaseHelper.GetConnection();
+                        await conn.OpenAsync();
+                        
+                        var query = @"
+                            SELECT k.KitapID as ID, k.Baslik as KitapAdi, k.Yazar, 
+                                   COALESCE(k.ISBN, '') as ISBN, k.YayinYili as YayinYili,
+                                   COALESCE(kt.TurAdi, '') as Tur, k.StokAdedi as Stok, 
+                                   k.MevcutAdet as Mevcut, COALESCE(k.RafNo, '') as RafNo,
+                                   COALESCE(k.SiraNo, '') as SiraNo
+                            FROM Kitaplar k
+                            LEFT JOIN KitapTurleri kt ON k.TurID = kt.TurID
+                            ORDER BY k.KitapID";
+                        
+                        await using var cmd = new NpgsqlCommand(query, conn);
+                        await using var reader = await cmd.ExecuteReaderAsync();
+                        var dt = new DataTable();
+                        dt.Load(reader);
+                        rowCount = dt.Rows.Count;
+                        
+                        using var workbook = new XLWorkbook();
+                        var worksheet = workbook.Worksheets.Add("Kitaplar");
+                        worksheet.Cell(1, 1).InsertTable(dt);
+                        
+                        worksheet.Columns().AdjustToContents();
+                        
+                        var headerRow = worksheet.Row(1);
+                        headerRow.Style.Font.Bold = true;
+                        headerRow.Style.Fill.BackgroundColor = XLColor.FromHtml("#1e40af");
+                        headerRow.Style.Font.FontColor = XLColor.White;
+                        
+                        workbook.SaveAs(fileName);
+                    });
                     
-                    var adapter = new SqlDataAdapter(query, conn);
-                    var dt = new DataTable();
-                    adapter.Fill(dt);
-                    
-                    using var workbook = new XLWorkbook();
-                    var worksheet = workbook.Worksheets.Add("Kitaplar");
-                    worksheet.Cell(1, 1).InsertTable(dt);
-                    
-                    worksheet.Columns().AdjustToContents();
-                    
-                    var headerRow = worksheet.Row(1);
-                    headerRow.Style.Font.Bold = true;
-                    headerRow.Style.Fill.BackgroundColor = XLColor.FromHtml("#1e40af");
-                    headerRow.Style.Font.FontColor = XLColor.White;
-                    
-                    workbook.SaveAs(saveDialog.FileName);
-                    
-                    MessageBox.Show($"{dt.Rows.Count} kitap Excel'e aktarıldı!\n\n{saveDialog.FileName}", 
+                    MessageBox.Show($"{rowCount} kitap Excel'e aktarıldı!\n\n{fileName}", 
                         "Dışa Aktarma Tamamlandı", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
@@ -685,11 +657,11 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        private void Search_TextChanged(object sender, TextChangedEventArgs e) => LoadKitaplar(txtSearch.Text.Trim());
+        private void Search_TextChanged(object sender, TextChangedEventArgs e) => _ = LoadKitaplarAsync(txtSearch.Text.Trim());
         
         private void Filter_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (IsLoaded) LoadKitaplar(txtSearch?.Text?.Trim() ?? "");
+            if (IsLoaded) _ = LoadKitaplarAsync(txtSearch?.Text?.Trim() ?? "");
         }
     }
 
@@ -724,3 +696,7 @@ namespace KutuphaneOtomasyon.Pages
         }
     }
 }
+
+
+
+

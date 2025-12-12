@@ -1,5 +1,4 @@
-using System.Data;
-using Microsoft.Data.SqlClient;
+﻿using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -10,32 +9,32 @@ namespace KutuphaneOtomasyon.Pages
         public DashboardPage()
         {
             InitializeComponent();
-            LoadStats();
-            LoadOverdueBooks();
+            Loaded += async (s, e) => await LoadDataAsync();
         }
 
-        private void LoadStats()
+        private async Task LoadDataAsync()
+        {
+            await Task.WhenAll(LoadStatsAsync(), LoadOverdueBooksAsync());
+        }
+
+        private async Task LoadStatsAsync()
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-
-                // 1. Toplam Kitap
-                using var cmdBook = new SqlCommand("SELECT COUNT(*) FROM Kitaplar", conn);
-                txtTotalBooks.Text = cmdBook.ExecuteScalar()?.ToString() ?? "0";
-
-                // 2. Toplam Üye (Rolü 'Uye' olanlar)
-                using var cmdMember = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE Rol = 'Uye'", conn);
-                txtTotalMembers.Text = cmdMember.ExecuteScalar()?.ToString() ?? "0";
-
-                // 3. Aktif Ödünç (Henüz iade edilmemiş)
-                using var cmdLoan = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL", conn);
-                txtActiveLoans.Text = cmdLoan.ExecuteScalar()?.ToString() ?? "0";
-
-                // 4. Gecikenler (Iade edilmemiş VE BeklenenIadeTarihi geçmiş)
-                using var cmdOverdue = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL AND BeklenenIadeTarihi < GETDATE()", conn);
-                txtOverdueBooks.Text = cmdOverdue.ExecuteScalar()?.ToString() ?? "0";
+                // API'den istatistikleri al
+                var stats = await ApiService.GetDashboardStatsAsync();
+                
+                if (stats != null)
+                {
+                    txtTotalBooks.Text = stats.ToplamKitap.ToString();
+                    txtTotalMembers.Text = stats.ToplamUye.ToString();
+                    txtActiveLoans.Text = stats.AktifOdunc.ToString();
+                    txtOverdueBooks.Text = stats.Gecikenler.ToString();
+                }
+                else
+                {
+                    MessageBox.Show("İstatistikler yüklenemedi. API çalışıyor mu?", "Hata", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
             catch (Exception ex)
             {
@@ -43,41 +42,23 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        private void LoadOverdueBooks()
+        private async Task LoadOverdueBooksAsync()
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-
-                // Geciken kitapları detaylı listele
-                var query = @"
-                    SELECT 
-                        k.AdSoyad, 
-                        kt.Baslik AS KitapBaslik, 
-                        o.BeklenenIadeTarihi,
-                        DATEDIFF(day, o.BeklenenIadeTarihi, GETDATE()) AS GecikmeGun
-                    FROM OduncIslemleri o
-                    JOIN Kullanicilar k ON o.UyeID = k.KullaniciID
-                    JOIN Kitaplar kt ON o.KitapID = kt.KitapID
-                    WHERE o.IadeTarihi IS NULL AND o.BeklenenIadeTarihi < GETDATE()
-                    ORDER BY o.BeklenenIadeTarihi ASC"; // En çok geciken en üstte
-
-                var adapter = new SqlDataAdapter(query, conn);
-                var dt = new DataTable();
-                adapter.Fill(dt);
-
-                dgOverdue.ItemsSource = dt.DefaultView;
-
-                if (dt.Rows.Count == 0)
+                // API'den geciken kitapları al
+                var gecikenler = await ApiService.GetGecikenKitaplarAsync();
+                
+                if (gecikenler != null && gecikenler.Count > 0)
                 {
-                    dgOverdue.Visibility = Visibility.Collapsed;
-                    txtNoOverdue.Visibility = Visibility.Visible;
+                    dgOverdue.ItemsSource = gecikenler;
+                    dgOverdue.Visibility = Visibility.Visible;
+                    txtNoOverdue.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
-                    dgOverdue.Visibility = Visibility.Visible;
-                    txtNoOverdue.Visibility = Visibility.Collapsed;
+                    dgOverdue.Visibility = Visibility.Collapsed;
+                    txtNoOverdue.Visibility = Visibility.Visible;
                 }
             }
             catch (Exception ex)
@@ -86,65 +67,43 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        // Hızlı İşlem Butonları (Parent window üzerinden yönlendirme yapılabilir veya direkt dialog açılabilir)
-        // Burada basitçe ilgili Dialogları açacağız. Sayfa yönlendirmesi için NavigationService kullanabiliriz ama butonların amacı hızlı işlem.
+        private void QuickAddBook_Click(object sender, RoutedEventArgs e) => OpenAddBookDialog();
         
-        private void QuickAddBook_Click(object sender, RoutedEventArgs e)
-        {
-            OpenAddBookDialog();
-        }
+        private void QuickAddBook_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => OpenAddBookDialog();
         
-        private void QuickAddBook_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            OpenAddBookDialog();
-        }
-        
-        private void OpenAddBookDialog()
+        private async void OpenAddBookDialog()
         {
             var dialog = new KitapDialog();
             if (dialog.ShowDialog() == true)
             {
-                LoadStats(); // İstatistikleri güncelle
+                await LoadStatsAsync();
             }
         }
 
-        private void QuickAddMember_Click(object sender, RoutedEventArgs e)
-        {
-            OpenAddMemberDialog();
-        }
+        private void QuickAddMember_Click(object sender, RoutedEventArgs e) => OpenAddMemberDialog();
         
-        private void QuickAddMember_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            OpenAddMemberDialog();
-        }
+        private void QuickAddMember_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => OpenAddMemberDialog();
         
-        private void OpenAddMemberDialog()
+        private async void OpenAddMemberDialog()
         {
             var dialog = new UyeDialog();
             if (dialog.ShowDialog() == true)
             {
-                LoadStats();
+                await LoadStatsAsync();
             }
         }
 
-        private void QuickLoan_Click(object sender, RoutedEventArgs e)
-        {
-            OpenLoanDialog();
-        }
+        private void QuickLoan_Click(object sender, RoutedEventArgs e) => OpenLoanDialog();
         
-        private void QuickLoan_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            OpenLoanDialog();
-        }
+        private void QuickLoan_Border_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => OpenLoanDialog();
         
-        private void OpenLoanDialog()
+        private async void OpenLoanDialog()
         {
-             var dialog = new OduncDialog();
-             if (dialog.ShowDialog() == true)
-             {
-                 LoadStats();
-                 LoadOverdueBooks();
-             }
+            var dialog = new OduncDialog();
+            if (dialog.ShowDialog() == true)
+            {
+                await LoadDataAsync();
+            }
         }
     }
 }

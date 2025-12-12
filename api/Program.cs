@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Npgsql;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
@@ -99,8 +99,8 @@ if (Directory.Exists(websitePath))
     });
 }
 
-// Database connection string
-var connectionString = "Server=tcp:127.0.0.1,1433;Database=KutuphaneDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;";
+// Database connection string - SUPABASE PostgreSQL
+var connectionString = "Host=db.cajuuwmwldceggretuyq.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=201005Ma.-;SSL Mode=Require;Trust Server Certificate=true";
 
 // Yardımcı Metot: Şifre Hashleme
 string HashPassword(string password)
@@ -110,61 +110,178 @@ string HashPassword(string password)
     return Convert.ToHexString(bytes).ToLower();
 }
 
-
-
-// Uygulama Başlarken Tabloyu Kontrol Et
+// Uygulama Başlarken Tabloları Oluştur (PostgreSQL)
 using (var scope = app.Services.CreateScope())
 {
     try 
     {
-        using var conn = new SqlConnection(connectionString);
+        using var conn = new NpgsqlConnection(connectionString);
         conn.Open();
-        var tableCmd = new SqlCommand(@"
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='SifreSifirlamaIslemleri' and xtype='U')
-            BEGIN
-                CREATE TABLE SifreSifirlamaIslemleri (
-                    IslemID INT PRIMARY KEY IDENTITY(1,1),
-                    KullaniciID INT NOT NULL,
-                    Kod NVARCHAR(10) NOT NULL,
-                    OlusturmaTarihi DATETIME DEFAULT GETDATE(),
-                    SonKullanmaTarihi DATETIME NOT NULL,
-                    KullanildiMi BIT DEFAULT 0,
-                    FOREIGN KEY (KullaniciID) REFERENCES Kullanicilar(KullaniciID)
-                )
-            END", conn);
-        tableCmd.ExecuteNonQuery();
+        
+        // Eski büyük harfli tabloları sil (varsa)
+        var dropOldTables = new NpgsqlCommand(@"
+            DROP TABLE IF EXISTS ""SifreSifirlamaIslemleri"" CASCADE;
+            DROP TABLE IF EXISTS ""Degerlendirmeler"" CASCADE;
+            DROP TABLE IF EXISTS ""OduncIslemleri"" CASCADE;
+            DROP TABLE IF EXISTS ""Kitaplar"" CASCADE;
+            DROP TABLE IF EXISTS ""KitapTurleri"" CASCADE;
+            DROP TABLE IF EXISTS ""Ayarlar"" CASCADE;
+            DROP TABLE IF EXISTS ""Kullanicilar"" CASCADE;
+        ", conn);
+        dropOldTables.ExecuteNonQuery();
+        
+        // Tabloları oluştur (PostgreSQL syntax - lowercase)
+        var createTablesCmd = new NpgsqlCommand(@"
+            -- Kullanicilar tablosu
+            CREATE TABLE IF NOT EXISTS Kullanicilar (
+                KullaniciID SERIAL PRIMARY KEY,
+                KullaniciAdi VARCHAR(50) UNIQUE NOT NULL,
+                Sifre VARCHAR(256) NOT NULL,
+                AdSoyad VARCHAR(100) NOT NULL,
+                Email VARCHAR(100),
+                Telefon VARCHAR(20),
+                Rol VARCHAR(20) DEFAULT 'Uye',
+                AktifMi BOOLEAN DEFAULT TRUE,
+                OlusturmaTarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
 
-        // Eksik Kolon Kontrolü (Migration)
-        // 1. AktifMi
-        var colCmd = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('Kullanicilar') AND name = 'AktifMi'", conn);
-        if ((int)colCmd.ExecuteScalar() == 0)
-        {
-            new SqlCommand("ALTER TABLE Kullanicilar ADD AktifMi BIT DEFAULT 1", conn).ExecuteNonQuery();
-        }
+            -- KitapTurleri tablosu
+            CREATE TABLE IF NOT EXISTS KitapTurleri (
+                TurID SERIAL PRIMARY KEY,
+                TurAdi VARCHAR(50) NOT NULL
+            );
 
-        // 2. Telefon
-        colCmd = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('Kullanicilar') AND name = 'Telefon'", conn);
-        if ((int)colCmd.ExecuteScalar() == 0)
+            -- Kitaplar tablosu
+            CREATE TABLE IF NOT EXISTS Kitaplar (
+                KitapID SERIAL PRIMARY KEY,
+                Baslik VARCHAR(200) NOT NULL,
+                Yazar VARCHAR(100) NOT NULL,
+                ISBN VARCHAR(20),
+                Barkod VARCHAR(50),
+                YayinYili INTEGER,
+                TurID INTEGER REFERENCES KitapTurleri(TurID),
+                StokAdedi INTEGER DEFAULT 1,
+                MevcutAdet INTEGER DEFAULT 1,
+                RafNo VARCHAR(20),
+                SiraNo VARCHAR(20),
+                Aciklama VARCHAR(500),
+                EklenmeTarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- OduncIslemleri tablosu
+            CREATE TABLE IF NOT EXISTS OduncIslemleri (
+                IslemID SERIAL PRIMARY KEY,
+                KitapID INTEGER REFERENCES Kitaplar(KitapID),
+                UyeID INTEGER REFERENCES Kullanicilar(KullaniciID),
+                OduncTarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                BeklenenIadeTarihi TIMESTAMP,
+                IadeTarihi TIMESTAMP,
+                Durum VARCHAR(20) DEFAULT 'Odunc',
+                CezaMiktari DECIMAL(10,2) DEFAULT 0
+            );
+
+            -- Ayarlar tablosu
+            CREATE TABLE IF NOT EXISTS Ayarlar (
+                AyarID SERIAL PRIMARY KEY,
+                AyarAdi VARCHAR(50) UNIQUE NOT NULL,
+                AyarDegeri VARCHAR(100) NOT NULL,
+                Aciklama VARCHAR(200)
+            );
+
+            -- Degerlendirmeler tablosu
+            CREATE TABLE IF NOT EXISTS Degerlendirmeler (
+                DegerlendirmeID SERIAL PRIMARY KEY,
+                UyeID INTEGER REFERENCES Kullanicilar(KullaniciID),
+                KitapID INTEGER REFERENCES Kitaplar(KitapID),
+                Puan SMALLINT CHECK (Puan >= 1 AND Puan <= 5),
+                Yorum VARCHAR(500),
+                Tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- SifreSifirlamaIslemleri tablosu
+            CREATE TABLE IF NOT EXISTS SifreSifirlamaIslemleri (
+                IslemID SERIAL PRIMARY KEY,
+                KullaniciID INTEGER NOT NULL REFERENCES Kullanicilar(KullaniciID),
+                Kod VARCHAR(10) NOT NULL,
+                OlusturmaTarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                SonKullanmaTarihi TIMESTAMP NOT NULL,
+                KullanildiMi BOOLEAN DEFAULT FALSE
+            );
+        ", conn);
+        createTablesCmd.ExecuteNonQuery();
+        
+        // Varsayılan admin kontrolü ve ekleme
+        var checkAdmin = new NpgsqlCommand(@"SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
+        checkAdmin.Parameters.AddWithValue("@user", "admin");
+        if (Convert.ToInt32(checkAdmin.ExecuteScalar()) == 0)
         {
-            new SqlCommand("ALTER TABLE Kullanicilar ADD Telefon NVARCHAR(20)", conn).ExecuteNonQuery();
+            var hash = HashPassword("admin123");
+            var insertAdmin = new NpgsqlCommand(@"
+                INSERT INTO Kullanicilar (KullaniciAdi, Sifre, AdSoyad, Rol, AktifMi) 
+                VALUES (@user, @sifre, @ad, @rol, TRUE)", conn);
+            insertAdmin.Parameters.AddWithValue("@user", "admin");
+            insertAdmin.Parameters.AddWithValue("@sifre", hash);
+            insertAdmin.Parameters.AddWithValue("@ad", "Sistem Yöneticisi");
+            insertAdmin.Parameters.AddWithValue("@rol", "Yonetici");
+            insertAdmin.ExecuteNonQuery();
         }
+        
+        // Varsayılan kitap türleri
+        var turler = new[] { "Roman", "Hikaye", "Şiir", "Tarih", "Bilim", "Felsefe", "Çocuk", "Eğitim" };
+        foreach (var tur in turler)
+        {
+            var checkTur = new NpgsqlCommand(@"SELECT COUNT(*) FROM KitapTurleri WHERE TurAdi = @tur", conn);
+            checkTur.Parameters.AddWithValue("@tur", tur);
+            if (Convert.ToInt32(checkTur.ExecuteScalar()) == 0)
+            {
+                var insertTur = new NpgsqlCommand(@"INSERT INTO KitapTurleri (TurAdi) VALUES (@tur)", conn);
+                insertTur.Parameters.AddWithValue("@tur", tur);
+                insertTur.ExecuteNonQuery();
+            }
+        }
+        
+        // Varsayılan ayarlar
+        var ayarlar = new Dictionary<string, (string Deger, string Aciklama)>
+        {
+            { "GecikmeUcreti", ("1.00", "Gün başına gecikme ücreti (TL)") },
+            { "MaxOduncGun", ("14", "Maksimum ödünç verme süresi (gün)") }
+        };
+        foreach (var ayar in ayarlar)
+        {
+            var checkAyar = new NpgsqlCommand(@"SELECT COUNT(*) FROM Ayarlar WHERE AyarAdi = @ad", conn);
+            checkAyar.Parameters.AddWithValue("@ad", ayar.Key);
+            if (Convert.ToInt32(checkAyar.ExecuteScalar()) == 0)
+            {
+                var insertAyar = new NpgsqlCommand(@"
+                    INSERT INTO Ayarlar (AyarAdi, AyarDegeri, Aciklama) 
+                    VALUES (@ad, @deger, @aciklama)", conn);
+                insertAyar.Parameters.AddWithValue("@ad", ayar.Key);
+                insertAyar.Parameters.AddWithValue("@deger", ayar.Value.Deger);
+                insertAyar.Parameters.AddWithValue("@aciklama", ayar.Value.Aciklama);
+                insertAyar.ExecuteNonQuery();
+            }
+        }
+        
+        Console.WriteLine("✅ Supabase PostgreSQL bağlantısı başarılı! Tablolar oluşturuldu.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine("DB Başlangıç hatası: " + ex.Message);
+        Console.WriteLine("❌ DB Başlangıç hatası: " + ex.Message);
     }
 }
+
+// ==================== GİRİŞ API ====================
 
 app.MapPost("/api/giris", (LoginRequest request) =>
 {
     if (string.IsNullOrEmpty(request.KullaniciAdi) || string.IsNullOrEmpty(request.Sifre))
         return Results.BadRequest("Kullanıcı adı ve şifre gereklidir.");
 
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
 
     var hash = HashPassword(request.Sifre);
-    var cmd = new SqlCommand("SELECT KullaniciID, AdSoyad, Rol FROM Kullanicilar WHERE KullaniciAdi = @user AND Sifre = @pass AND AktifMi = 1", conn);
+    var cmd = new NpgsqlCommand(@"SELECT KullaniciID, AdSoyad, Rol FROM Kullanicilar WHERE KullaniciAdi = @user AND Sifre = @pass AND AktifMi = TRUE", conn);
     cmd.Parameters.AddWithValue("@user", request.KullaniciAdi);
     cmd.Parameters.AddWithValue("@pass", hash);
 
@@ -186,31 +303,110 @@ app.MapPost("/api/giris", (LoginRequest request) =>
                 new Claim(ClaimTypes.Name, adSoyad),
                 new Claim(ClaimTypes.Role, rol)
             }),
-            Expires = DateTime.UtcNow.AddHours(2), // Token 2 saat geçerli
+            Expires = DateTime.UtcNow.AddHours(2),
             Issuer = builder.Configuration["Jwt:Issuer"],
             Audience = builder.Configuration["Jwt:Audience"],
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(tokenKey), SecurityAlgorithms.HmacSha256Signature)
         };
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        return Results.Ok(new { Token = tokenHandler.WriteToken(token), Mesaj = "Giriş Başarılı" });
+        
+        // Kullanıcı bilgilerini de döndür
+        return Results.Ok(new { 
+            Token = tokenHandler.WriteToken(token), 
+            UserId = uid,
+            AdSoyad = adSoyad,
+            Rol = rol,
+            Mesaj = "Giriş Başarılı" 
+        });
     }
 
     return Results.Unauthorized();
 })
 .WithName("GirisYap")
 .WithTags("Giriş")
+.AllowAnonymous();
 
+// ==================== DASHBOARD API ====================
+
+app.MapGet("/api/dashboard/stats", () =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    // Toplam Kitap
+    using var cmdBook = new NpgsqlCommand("SELECT COUNT(*) FROM Kitaplar", conn);
+    var toplamKitap = Convert.ToInt32(cmdBook.ExecuteScalar());
+    
+    // Toplam Üye
+    using var cmdMember = new NpgsqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE Rol = 'Uye'", conn);
+    var toplamUye = Convert.ToInt32(cmdMember.ExecuteScalar());
+    
+    // Aktif Ödünç
+    using var cmdLoan = new NpgsqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL", conn);
+    var aktifOdunc = Convert.ToInt32(cmdLoan.ExecuteScalar());
+    
+    // Gecikenler
+    using var cmdOverdue = new NpgsqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL AND BeklenenIadeTarihi < NOW()", conn);
+    var gecikenler = Convert.ToInt32(cmdOverdue.ExecuteScalar());
+    
+    return Results.Ok(new { 
+        ToplamKitap = toplamKitap, 
+        ToplamUye = toplamUye, 
+        AktifOdunc = aktifOdunc, 
+        Gecikenler = gecikenler 
+    });
+})
+.WithName("DashboardStats")
+.WithTags("Dashboard")
+.AllowAnonymous();
+
+app.MapGet("/api/dashboard/geciken-kitaplar", () =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    var query = @"
+        SELECT 
+            o.IslemID,
+            k.AdSoyad, 
+            kt.Baslik AS KitapBaslik, 
+            o.BeklenenIadeTarihi,
+            EXTRACT(DAY FROM NOW() - o.BeklenenIadeTarihi)::INTEGER AS GecikmeGun
+        FROM OduncIslemleri o
+        JOIN Kullanicilar k ON o.UyeID = k.KullaniciID
+        JOIN Kitaplar kt ON o.KitapID = kt.KitapID
+        WHERE o.IadeTarihi IS NULL AND o.BeklenenIadeTarihi < NOW()
+        ORDER BY o.BeklenenIadeTarihi ASC";
+    
+    using var cmd = new NpgsqlCommand(query, conn);
+    using var reader = cmd.ExecuteReader();
+    
+    var list = new List<object>();
+    while (reader.Read())
+    {
+        list.Add(new {
+            IslemID = reader.GetInt32(0),
+            AdSoyad = reader.GetString(1),
+            KitapBaslik = reader.GetString(2),
+            BeklenenIadeTarihi = reader.GetDateTime(3),
+            GecikmeGun = reader.GetInt32(4)
+        });
+    }
+    
+    return Results.Ok(list);
+})
+.WithName("GecikenKitaplar")
+.WithTags("Dashboard")
 .AllowAnonymous();
 
 // ==================== ŞİFRE SIFIRLAMA API ====================
 
 app.MapPost("/api/auth/sifremi-unuttum", async (ForgotPasswordRequest request, IEmailService emailService) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
 
-    // 1. Kullanıcı var mı kontrol et
-    var cmd = new SqlCommand("SELECT KullaniciID, AdSoyad FROM Kullanicilar WHERE Email = @email AND AktifMi = 1", conn);
+    var cmd = new NpgsqlCommand(@"SELECT KullaniciID, AdSoyad FROM Kullanicilar WHERE Email = @email AND AktifMi = TRUE", conn);
     cmd.Parameters.AddWithValue("@email", request.Email);
     
     int? userId = null;
@@ -228,21 +424,18 @@ app.MapPost("/api/auth/sifremi-unuttum", async (ForgotPasswordRequest request, I
     if (userId == null)
         return Results.NotFound(new { message = "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı." });
 
-    // 2. Rastgele Kod Oluştur (6 haneli)
     var random = new Random();
     var kod = random.Next(100000, 999999).ToString();
-    var sonKullanma = DateTime.Now.AddMinutes(15); // 15 dakika geçerli
+    var sonKullanma = DateTime.Now.AddMinutes(15);
 
-    // 3. Kodu DB'ye kaydet
-    var insertCmd = new SqlCommand(@"
+    var insertCmd = new NpgsqlCommand(@"
         INSERT INTO SifreSifirlamaIslemleri (KullaniciID, Kod, SonKullanmaTarihi, KullanildiMi)
-        VALUES (@uid, @kod, @skk, 0)", conn);
+        VALUES (@uid, @kod, @skk, FALSE)", conn);
     insertCmd.Parameters.AddWithValue("@uid", userId);
     insertCmd.Parameters.AddWithValue("@kod", kod);
     insertCmd.Parameters.AddWithValue("@skk", sonKullanma);
     await insertCmd.ExecuteNonQueryAsync();
 
-    // 4. Mail Gönder
     try
     {
         await emailService.SendEmailAsync(request.Email, "Şifre Sıfırlama Kodu", 
@@ -263,14 +456,13 @@ app.MapPost("/api/auth/sifre-sifirla", async (ResetPasswordRequest request) =>
     if (request.YeniSifre.Length < 6)
         return Results.BadRequest(new { message = "Şifre en az 6 karakter olmalıdır." });
 
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
 
-    // 1. Kodu doğrula
-    var cmd = new SqlCommand(@"
-        SELECT TOP 1 IslemID, KullaniciID FROM SifreSifirlamaIslemleri 
-        WHERE Kod = @kod AND KullanildiMi = 0 AND SonKullanmaTarihi > GETDATE()
-        ORDER BY IslemID DESC", conn);
+    var cmd = new NpgsqlCommand(@"
+        SELECT IslemID, KullaniciID FROM SifreSifirlamaIslemleri 
+        WHERE Kod = @kod AND KullanildiMi = FALSE AND SonKullanmaTarihi > NOW()
+        ORDER BY IslemID DESC LIMIT 1", conn);
     cmd.Parameters.AddWithValue("@kod", request.Kod);
 
     int islemId = 0;
@@ -288,15 +480,13 @@ app.MapPost("/api/auth/sifre-sifirla", async (ResetPasswordRequest request) =>
     if (islemId == 0)
         return Results.BadRequest(new { message = "Geçersiz veya süresi dolmuş kod." });
 
-    // 2. Şifreyi Güncelle
     var hash = HashPassword(request.YeniSifre);
-    var updateCmd = new SqlCommand("UPDATE Kullanicilar SET Sifre = @pass WHERE KullaniciID = @uid", conn);
+    var updateCmd = new NpgsqlCommand(@"UPDATE Kullanicilar SET Sifre = @pass WHERE KullaniciID = @uid", conn);
     updateCmd.Parameters.AddWithValue("@pass", hash);
     updateCmd.Parameters.AddWithValue("@uid", userId);
     await updateCmd.ExecuteNonQueryAsync();
 
-    // 3. Kodu kullanıldı olarak işaretle
-    var expireCmd = new SqlCommand("UPDATE SifreSifirlamaIslemleri SET KullanildiMi = 1 WHERE IslemID = @iid", conn);
+    var expireCmd = new NpgsqlCommand(@"UPDATE SifreSifirlamaIslemleri SET KullanildiMi = TRUE WHERE IslemID = @iid", conn);
     expireCmd.Parameters.AddWithValue("@iid", islemId);
     await expireCmd.ExecuteNonQueryAsync();
 
@@ -308,29 +498,26 @@ app.MapPost("/api/auth/sifre-sifirla", async (ResetPasswordRequest request) =>
 
 app.MapPost("/api/auth/register", async (RegisterRequest request, IEmailService emailService) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
 
-    // 1. Validasyonlar
     if (!request.Email.EndsWith("@gmail.com"))
         return Results.BadRequest(new { message = "Sadece @gmail.com uzantılı mail adresleri kabul edilmektedir." });
 
     if (request.Sifre.Length < 6)
         return Results.BadRequest(new { message = "Şifre en az 6 karakter olmalıdır." });
 
-    // 2. Kullanıcı Adı veya Email Kontrolü
-    var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user OR Email = @email", conn);
+    var checkCmd = new NpgsqlCommand(@"SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user OR Email = @email", conn);
     checkCmd.Parameters.AddWithValue("@user", request.KullaniciAdi);
     checkCmd.Parameters.AddWithValue("@email", request.Email);
-    if ((int)await checkCmd.ExecuteScalarAsync() > 0)
+    if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0)
         return Results.BadRequest(new { message = "Bu kullanıcı adı veya e-posta adresi zaten kullanılıyor." });
 
-    // 3. Kullanıcıyı Pasif Olarak Ekle
     var hash = HashPassword(request.Sifre);
-    var insertCmd = new SqlCommand(@"
+    var insertCmd = new NpgsqlCommand(@"
         INSERT INTO Kullanicilar (KullaniciAdi, Sifre, AdSoyad, Email, Telefon, Rol, AktifMi) 
-        OUTPUT INSERTED.KullaniciID
-        VALUES (@user, @pass, @ad, @email, @tel, 'Uye', 0)", conn);
+        VALUES (@user, @pass, @ad, @email, @tel, 'Uye', FALSE)
+        RETURNING KullaniciID", conn);
     
     insertCmd.Parameters.AddWithValue("@user", request.KullaniciAdi);
     insertCmd.Parameters.AddWithValue("@pass", hash);
@@ -338,16 +525,15 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, IEmailService 
     insertCmd.Parameters.AddWithValue("@email", request.Email);
     insertCmd.Parameters.AddWithValue("@tel", (object?)request.Telefon ?? DBNull.Value);
     
-    var userId = (int)await insertCmd.ExecuteScalarAsync();
+    var userId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
 
-    // 4. Doğrulama Kodu Oluştur ve Gönder
     var random = new Random();
     var kod = random.Next(100000, 999999).ToString();
-    var sonKullanma = DateTime.Now.AddMinutes(15); 
+    var sonKullanma = DateTime.Now.AddMinutes(15);
 
-    var codeCmd = new SqlCommand(@"
+    var codeCmd = new NpgsqlCommand(@"
         INSERT INTO SifreSifirlamaIslemleri (KullaniciID, Kod, SonKullanmaTarihi, KullanildiMi)
-        VALUES (@uid, @kod, @skk, 0)", conn); // Aynı tabloyu doğrulama için de kullanıyoruz
+        VALUES (@uid, @kod, @skk, FALSE)", conn);
     codeCmd.Parameters.AddWithValue("@uid", userId);
     codeCmd.Parameters.AddWithValue("@kod", kod);
     codeCmd.Parameters.AddWithValue("@skk", sonKullanma);
@@ -366,13 +552,13 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, IEmailService 
 
 app.MapPost("/api/auth/verify-email", async (VerifyRequest request) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
 
-    var cmd = new SqlCommand(@"
-        SELECT TOP 1 IslemID, KullaniciID FROM SifreSifirlamaIslemleri 
-        WHERE Kod = @kod AND KullaniciID = @uid AND KullanildiMi = 0 AND SonKullanmaTarihi > GETDATE()
-        ORDER BY IslemID DESC", conn);
+    var cmd = new NpgsqlCommand(@"
+        SELECT IslemID, KullaniciID FROM SifreSifirlamaIslemleri 
+        WHERE Kod = @kod AND KullaniciID = @uid AND KullanildiMi = FALSE AND SonKullanmaTarihi > NOW()
+        ORDER BY IslemID DESC LIMIT 1", conn);
     cmd.Parameters.AddWithValue("@kod", request.Kod);
     cmd.Parameters.AddWithValue("@uid", request.UserId);
 
@@ -385,11 +571,13 @@ app.MapPost("/api/auth/verify-email", async (VerifyRequest request) =>
 
     if (islemId == 0) return Results.BadRequest(new { message = "Geçersiz veya süresi dolmuş kod." });
 
-    // Hesabı Aktifleştir
-    await new SqlCommand($"UPDATE Kullanicilar SET AktifMi = 1 WHERE KullaniciID = {request.UserId}", conn).ExecuteNonQueryAsync();
+    var activateCmd = new NpgsqlCommand(@"UPDATE Kullanicilar SET AktifMi = TRUE WHERE KullaniciID = @uid", conn);
+    activateCmd.Parameters.AddWithValue("@uid", request.UserId);
+    await activateCmd.ExecuteNonQueryAsync();
     
-    // Kodu yak
-    await new SqlCommand($"UPDATE SifreSifirlamaIslemleri SET KullanildiMi = 1 WHERE IslemID = {islemId}", conn).ExecuteNonQueryAsync();
+    var expireCmd = new NpgsqlCommand(@"UPDATE SifreSifirlamaIslemleri SET KullanildiMi = TRUE WHERE IslemID = @iid", conn);
+    expireCmd.Parameters.AddWithValue("@iid", islemId);
+    await expireCmd.ExecuteNonQueryAsync();
 
     return Results.Ok(new { message = "Hesabınız başarıyla doğrulandı. Giriş yapabilirsiniz." });
 })
@@ -402,12 +590,12 @@ app.MapPost("/api/auth/verify-email", async (VerifyRequest request) =>
 app.MapGet("/api/kitaplar", () =>
 {
     var kitaplar = new List<object>();
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
-        SELECT k.KitapID, k.Baslik, k.Yazar, ISNULL(k.ISBN, '') as ISBN, 
-               ISNULL(kt.TurAdi, '-') as TurAdi, k.StokAdedi, k.MevcutAdet, ISNULL(k.RafNo, '') as RafNo
+    var cmd = new NpgsqlCommand(@"
+        SELECT k.KitapID, k.Baslik, k.Yazar, COALESCE(k.ISBN, '') as ISBN, 
+               COALESCE(kt.TurAdi, '-') as TurAdi, k.StokAdedi, k.MevcutAdet, COALESCE(k.RafNo, '') as RafNo
         FROM Kitaplar k
         LEFT JOIN KitapTurleri kt ON k.TurID = kt.TurID
         ORDER BY k.KitapID DESC", conn);
@@ -431,14 +619,14 @@ app.MapGet("/api/kitaplar", () =>
 })
 .WithName("GetKitaplar")
 .WithTags("Kitaplar")
-.RequireAuthorization(); // ARTIK KİLİTLİ!
+.RequireAuthorization();
 
 app.MapGet("/api/kitaplar/{id}", (int id) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand("SELECT * FROM Kitaplar WHERE KitapID = @id", conn);
+    var cmd = new NpgsqlCommand(@"SELECT * FROM Kitaplar WHERE KitapID = @id", conn);
     cmd.Parameters.AddWithValue("@id", id);
     
     using var reader = cmd.ExecuteReader();
@@ -465,13 +653,13 @@ app.MapGet("/api/kitaplar/{id}", (int id) =>
 
 app.MapPost("/api/kitaplar", (KitapRequest kitap) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
+    var cmd = new NpgsqlCommand(@"
         INSERT INTO Kitaplar (Baslik, Yazar, ISBN, YayinYili, TurID, StokAdedi, MevcutAdet, RafNo)
-        OUTPUT INSERTED.KitapID
-        VALUES (@baslik, @yazar, @isbn, @yil, @tur, @stok, @stok, @raf)", conn);
+        VALUES (@baslik, @yazar, @isbn, @yil, @tur, @stok, @stok, @raf)
+        RETURNING KitapID", conn);
     
     cmd.Parameters.AddWithValue("@baslik", kitap.Baslik);
     cmd.Parameters.AddWithValue("@yazar", kitap.Yazar);
@@ -490,10 +678,10 @@ app.MapPost("/api/kitaplar", (KitapRequest kitap) =>
 
 app.MapPut("/api/kitaplar/{id}", (int id, KitapRequest kitap) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
+    var cmd = new NpgsqlCommand(@"
         UPDATE Kitaplar SET Baslik = @baslik, Yazar = @yazar, ISBN = @isbn, 
         YayinYili = @yil, TurID = @tur, StokAdedi = @stok, RafNo = @raf
         WHERE KitapID = @id", conn);
@@ -516,10 +704,10 @@ app.MapPut("/api/kitaplar/{id}", (int id, KitapRequest kitap) =>
 
 app.MapDelete("/api/kitaplar/{id}", (int id) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand("DELETE FROM Kitaplar WHERE KitapID = @id", conn);
+    var cmd = new NpgsqlCommand(@"DELETE FROM Kitaplar WHERE KitapID = @id", conn);
     cmd.Parameters.AddWithValue("@id", id);
     
     var affected = cmd.ExecuteNonQuery();
@@ -534,12 +722,12 @@ app.MapDelete("/api/kitaplar/{id}", (int id) =>
 app.MapGet("/api/uyeler", () =>
 {
     var uyeler = new List<object>();
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
-        SELECT KullaniciID, KullaniciAdi, AdSoyad, ISNULL(Email, '') as Email, 
-               ISNULL(Telefon, '') as Telefon, Rol, AktifMi
+    var cmd = new NpgsqlCommand(@"
+        SELECT KullaniciID, KullaniciAdi, AdSoyad, COALESCE(Email, '') as Email, 
+               COALESCE(Telefon, '') as Telefon, Rol, AktifMi
         FROM Kullanicilar ORDER BY KullaniciID DESC", conn);
     
     using var reader = cmd.ExecuteReader();
@@ -564,10 +752,10 @@ app.MapGet("/api/uyeler", () =>
 
 app.MapGet("/api/uyeler/{id}", (int id) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand("SELECT * FROM Kullanicilar WHERE KullaniciID = @id", conn);
+    var cmd = new NpgsqlCommand(@"SELECT * FROM Kullanicilar WHERE KullaniciID = @id", conn);
     cmd.Parameters.AddWithValue("@id", id);
     
     using var reader = cmd.ExecuteReader();
@@ -595,10 +783,10 @@ app.MapGet("/api/uyeler/{id}", (int id) =>
 app.MapGet("/api/odunc", () =>
 {
     var islemler = new List<object>();
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
+    var cmd = new NpgsqlCommand(@"
         SELECT o.IslemID, k.Baslik, u.AdSoyad, o.OduncTarihi, o.BeklenenIadeTarihi, o.IadeTarihi, o.Durum
         FROM OduncIslemleri o
         JOIN Kitaplar k ON o.KitapID = k.KitapID
@@ -627,14 +815,13 @@ app.MapGet("/api/odunc", () =>
 
 app.MapPost("/api/odunc", async (OduncRequest request, IEmailService emailService) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
 
-    // Kullanıcı bilgisi ve email kontrolü
     string? emailAdresi = null;
     string adSoyad = "";
     
-    using (var userCmd = new SqlCommand("SELECT Email, AdSoyad FROM Kullanicilar WHERE KullaniciID = @uye", conn))
+    using (var userCmd = new NpgsqlCommand(@"SELECT Email, AdSoyad FROM Kullanicilar WHERE KullaniciID = @uye", conn))
     {
         userCmd.Parameters.AddWithValue("@uye", request.UyeID);
         using var reader = await userCmd.ExecuteReaderAsync();
@@ -643,13 +830,12 @@ app.MapPost("/api/odunc", async (OduncRequest request, IEmailService emailServic
             emailAdresi = reader.IsDBNull(0) ? null : reader.GetString(0);
             adSoyad = reader.GetString(1);
         }
-    } // Reader kapatıldı
+    }
 
-    var cmd = new SqlCommand(@"
+    var cmd = new NpgsqlCommand(@"
         INSERT INTO OduncIslemleri (KitapID, UyeID, BeklenenIadeTarihi) 
-        OUTPUT INSERTED.IslemID
-        VALUES (@kitap, @uye, DATEADD(DAY, @gun, GETDATE()));
-        UPDATE Kitaplar SET MevcutAdet = MevcutAdet - 1 WHERE KitapID = @kitap", conn);
+        VALUES (@kitap, @uye, NOW() + INTERVAL '1 day' * @gun)
+        RETURNING IslemID", conn);
     
     cmd.Parameters.AddWithValue("@kitap", request.KitapID);
     cmd.Parameters.AddWithValue("@uye", request.UyeID);
@@ -657,13 +843,16 @@ app.MapPost("/api/odunc", async (OduncRequest request, IEmailService emailServic
     
     var id = await cmd.ExecuteScalarAsync();
 
-    // Email Gönderimi
+    var updateStock = new NpgsqlCommand(@"UPDATE Kitaplar SET MevcutAdet = MevcutAdet - 1 WHERE KitapID = @kitap", conn);
+    updateStock.Parameters.AddWithValue("@kitap", request.KitapID);
+    await updateStock.ExecuteNonQueryAsync();
+
     if (!string.IsNullOrEmpty(emailAdresi))
     {
         try 
         {
             string kitapAdi = "";
-            using (var kCmd = new SqlCommand("SELECT Baslik FROM Kitaplar WHERE KitapID = @id", conn))
+            using (var kCmd = new NpgsqlCommand(@"SELECT Baslik FROM Kitaplar WHERE KitapID = @id", conn))
             {
                 kCmd.Parameters.AddWithValue("@id", request.KitapID);
                 var result = await kCmd.ExecuteScalarAsync();
@@ -687,34 +876,41 @@ app.MapPost("/api/odunc", async (OduncRequest request, IEmailService emailServic
 
 app.MapPut("/api/odunc/{id}/iade", (int id) =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
-        UPDATE OduncIslemleri SET Durum = 'IadeEdildi', IadeTarihi = GETDATE() WHERE IslemID = @id;
-        UPDATE Kitaplar SET MevcutAdet = MevcutAdet + 1 
-        WHERE KitapID = (SELECT KitapID FROM OduncIslemleri WHERE IslemID = @id)", conn);
-    cmd.Parameters.AddWithValue("@id", id);
+    // Get KitapID first
+    var getKitapCmd = new NpgsqlCommand(@"SELECT KitapID FROM OduncIslemleri WHERE IslemID = @id", conn);
+    getKitapCmd.Parameters.AddWithValue("@id", id);
+    var kitapId = getKitapCmd.ExecuteScalar();
     
-    var affected = cmd.ExecuteNonQuery();
-    return affected > 0 ? Results.Ok(new { message = "Kitap iade alındı" }) : Results.NotFound();
+    if (kitapId == null) return Results.NotFound();
+    
+    var updateOdunc = new NpgsqlCommand(@"UPDATE OduncIslemleri SET Durum = 'IadeEdildi', IadeTarihi = NOW() WHERE IslemID = @id", conn);
+    updateOdunc.Parameters.AddWithValue("@id", id);
+    updateOdunc.ExecuteNonQuery();
+    
+    var updateKitap = new NpgsqlCommand(@"UPDATE Kitaplar SET MevcutAdet = MevcutAdet + 1 WHERE KitapID = @kitapId", conn);
+    updateKitap.Parameters.AddWithValue("@kitapId", kitapId);
+    updateKitap.ExecuteNonQuery();
+    
+    return Results.Ok(new { message = "Kitap iade alındı" });
 })
 .WithName("IadeAl")
 .WithTags("Ödünç İşlemleri")
 .RequireAuthorization();
 
-// Üyeye özel ödünç listesi
 app.MapGet("/api/odunc/uye/{uyeId}", (int uyeId) =>
 {
     var islemler = new List<object>();
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand(@"
+    var cmd = new NpgsqlCommand(@"
         SELECT o.IslemID, k.Baslik, k.Yazar, o.OduncTarihi, o.BeklenenIadeTarihi, o.IadeTarihi, o.Durum,
             CASE 
-                WHEN o.Durum = 'Odunc' AND o.BeklenenIadeTarihi < GETDATE() 
-                THEN DATEDIFF(DAY, o.BeklenenIadeTarihi, GETDATE())
+                WHEN o.Durum = 'Odunc' AND o.BeklenenIadeTarihi < NOW() 
+                THEN EXTRACT(DAY FROM NOW() - o.BeklenenIadeTarihi)::INTEGER
                 ELSE 0 
             END as GecikmeGun
         FROM OduncIslemleri o
@@ -749,10 +945,10 @@ app.MapGet("/api/odunc/uye/{uyeId}", (int uyeId) =>
 app.MapGet("/api/turler", () =>
 {
     var turler = new List<object>();
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new SqlCommand("SELECT TurID, TurAdi FROM KitapTurleri", conn);
+    var cmd = new NpgsqlCommand(@"SELECT TurID, TurAdi FROM KitapTurleri", conn);
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
     {
@@ -768,13 +964,13 @@ app.MapGet("/api/turler", () =>
 
 app.MapGet("/api/istatistikler", () =>
 {
-    using var conn = new SqlConnection(connectionString);
+    using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var kitapSayisi = new SqlCommand("SELECT COUNT(*) FROM Kitaplar", conn).ExecuteScalar();
-    var uyeSayisi = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE Rol = 'Uye'", conn).ExecuteScalar();
-    var oduncte = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE Durum = 'Odunc'", conn).ExecuteScalar();
-    var geciken = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE Durum = 'Odunc' AND BeklenenIadeTarihi < GETDATE()", conn).ExecuteScalar();
+    var kitapSayisi = new NpgsqlCommand(@"SELECT COUNT(*) FROM Kitaplar", conn).ExecuteScalar();
+    var uyeSayisi = new NpgsqlCommand(@"SELECT COUNT(*) FROM Kullanicilar WHERE Rol = 'Uye'", conn).ExecuteScalar();
+    var oduncte = new NpgsqlCommand(@"SELECT COUNT(*) FROM OduncIslemleri WHERE Durum = 'Odunc'", conn).ExecuteScalar();
+    var geciken = new NpgsqlCommand(@"SELECT COUNT(*) FROM OduncIslemleri WHERE Durum = 'Odunc' AND BeklenenIadeTarihi < NOW()", conn).ExecuteScalar();
     
     return Results.Ok(new
     {
@@ -799,3 +995,4 @@ public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Kod, string YeniSifre);
 public record RegisterRequest(string KullaniciAdi, string Sifre, string AdSoyad, string Email, string? Telefon);
 public record VerifyRequest(int UserId, string Kod);
+
