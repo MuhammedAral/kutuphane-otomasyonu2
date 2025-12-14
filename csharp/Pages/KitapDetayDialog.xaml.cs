@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+﻿using Npgsql;
 using System.Data;
 using System.Windows;
 using KutuphaneOtomasyon.Pages;
@@ -28,7 +28,7 @@ namespace KutuphaneOtomasyon.Pages
                 conn.Open();
 
                 // 1. Kitap Bilgilerini Getir
-                using var cmdKitap = new SqlCommand("SELECT * FROM Kitaplar WHERE KitapID = @id", conn);
+                using var cmdKitap = new NpgsqlCommand("SELECT * FROM Kitaplar WHERE KitapID = @id", conn);
                 cmdKitap.Parameters.AddWithValue("@id", _kitapId);
                 
                 using (var reader = cmdKitap.ExecuteReader())
@@ -53,7 +53,7 @@ namespace KutuphaneOtomasyon.Pages
                 }
 
                 // 2. Yorumları Getir
-                using var cmdYorumlar = new SqlCommand(@"
+                using var cmdYorumlar = new NpgsqlCommand(@"
                     SELECT d.Puan, d.Yorum, d.Tarih, k.AdSoyad 
                     FROM Degerlendirmeler d 
                     JOIN Kullanicilar k ON d.UyeID = k.KullaniciID 
@@ -62,11 +62,11 @@ namespace KutuphaneOtomasyon.Pages
                 cmdYorumlar.Parameters.AddWithValue("@id", _kitapId);
                 
                 var dt = new DataTable();
-                new SqlDataAdapter(cmdYorumlar).Fill(dt);
+                new NpgsqlDataAdapter(cmdYorumlar).Fill(dt);
                 lstYorumlar.ItemsSource = dt.DefaultView;
 
                 // 3. Ortalama Puanı Getir
-                using var cmdAvg = new SqlCommand("SELECT COUNT(*), AVG(CAST(Puan AS FLOAT)) FROM Degerlendirmeler WHERE KitapID = @id", conn);
+                using var cmdAvg = new NpgsqlCommand("SELECT COUNT(*), AVG(CAST(Puan AS FLOAT)) FROM Degerlendirmeler WHERE KitapID = @id", conn);
                 cmdAvg.Parameters.AddWithValue("@id", _kitapId);
                 
                 using (var readerAvg = cmdAvg.ExecuteReader())
@@ -120,9 +120,9 @@ namespace KutuphaneOtomasyon.Pages
                 using var conn = DatabaseHelper.GetConnection();
                 conn.Open();
                 
-                using var cmd = new SqlCommand(@"
+                using var cmd = new NpgsqlCommand(@"
                     INSERT INTO Degerlendirmeler (KitapID, UyeID, Puan, Yorum, Tarih)
-                    VALUES (@kitap, @uye, @puan, @yorum, GETDATE())", conn);
+                    VALUES (@kitap, @uye, @puan, @yorum, NOW())", conn);
                 
                 cmd.Parameters.AddWithValue("@kitap", _kitapId);
                 cmd.Parameters.AddWithValue("@uye", CurrentSession.UserId);
@@ -145,3 +145,4 @@ namespace KutuphaneOtomasyon.Pages
         }
     }
 }
+

@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using System.Windows;
 
 namespace KutuphaneOtomasyon.Pages
@@ -11,51 +10,65 @@ namespace KutuphaneOtomasyon.Pages
         public KitapDialog(int? kitapId = null)
         {
             InitializeComponent();
-            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
+            Loaded += async (s, e) => 
+            {
+                DarkModeHelper.EnableDarkMode(this);
+                await LoadTurlerAsync();
+                if (_kitapId.HasValue)
+                {
+                    await LoadKitapAsync();
+                }
+            };
             _kitapId = kitapId;
-            LoadTurler();
             
             if (_kitapId.HasValue)
             {
                 txtTitle.Text = "📖 Kitap Düzenle";
-                LoadKitap();
             }
         }
         
-        private void LoadTurler()
+        private async Task LoadTurlerAsync()
         {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            using var adapter = new SqlDataAdapter("SELECT TurID, TurAdi FROM KitapTurleri", conn);
-            var dt = new DataTable();
-            adapter.Fill(dt);
-            cmbTur.ItemsSource = dt.DefaultView;
-        }
-        
-        private void LoadKitap()
-        {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            using var cmd = new SqlCommand("SELECT * FROM Kitaplar WHERE KitapID = @id", conn);
-            cmd.Parameters.AddWithValue("@id", _kitapId);
-            
-            using var reader = cmd.ExecuteReader();
-            if (reader.Read())
+            try
             {
-                txtBaslik.Text = reader["Baslik"].ToString();
-                txtYazar.Text = reader["Yazar"].ToString();
-                txtYil.Text = reader["YayinYili"]?.ToString();
-                txtStok.Text = reader["StokAdedi"].ToString();
-                // Barkod verisini ISBN kolonundan oku
-                txtBarkod.Text = reader["ISBN"]?.ToString();
-                txtRaf.Text = reader["RafNo"]?.ToString();
-                txtSira.Text = reader["SiraNo"]?.ToString();
-                txtAciklama.Text = reader["Aciklama"]?.ToString();
-                cmbTur.SelectedValue = reader["TurID"];
+                var turler = await ApiService.GetTurlerAsync();
+                if (turler != null)
+                {
+                    var dt = new DataTable();
+                    dt.Columns.Add("TurID", typeof(int));
+                    dt.Columns.Add("TurAdi", typeof(string));
+                    foreach (var tur in turler)
+                    {
+                        dt.Rows.Add(tur.TurID, tur.TurAdi);
+                    }
+                    cmbTur.ItemsSource = dt.DefaultView;
+                }
             }
+            catch { }
         }
         
-        private void Kaydet_Click(object sender, RoutedEventArgs e)
+        private async Task LoadKitapAsync()
+        {
+            try
+            {
+                var kitap = await ApiService.GetKitapAsync(_kitapId!.Value);
+                if (kitap != null)
+                {
+                    txtBaslik.Text = kitap.Baslik;
+                    txtYazar.Text = kitap.Yazar;
+                    txtYil.Text = kitap.YayinYili?.ToString();
+                    txtStok.Text = kitap.StokAdedi.ToString();
+                    txtBarkod.Text = kitap.ISBN;
+                    txtRaf.Text = kitap.RafNo;
+                    txtSira.Text = kitap.SiraNo;
+                    txtAciklama.Text = kitap.Aciklama;
+                    cmbTur.SelectedValue = kitap.TurID;
+                }
+            }
+            catch { }
+        }
+        
+        private async void Kaydet_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtBaslik.Text) || string.IsNullOrWhiteSpace(txtYazar.Text))
             {
@@ -98,53 +111,37 @@ namespace KutuphaneOtomasyon.Pages
             
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
+                var request = new KitapRequest
+                {
+                    Baslik = txtBaslik.Text.Trim(),
+                    Yazar = txtYazar.Text.Trim(),
+                    ISBN = barkod,
+                    YayinYili = int.TryParse(txtYil.Text, out var yil2) ? yil2 : null,
+                    TurID = cmbTur.SelectedValue as int?,
+                    StokAdedi = int.TryParse(txtStok.Text, out var stok) ? stok : 1,
+                    RafNo = string.IsNullOrEmpty(txtRaf.Text) ? null : txtRaf.Text,
+                    SiraNo = string.IsNullOrEmpty(txtSira.Text) ? null : txtSira.Text,
+                    Aciklama = string.IsNullOrEmpty(txtAciklama.Text) ? null : txtAciklama.Text
+                };
                 
-                SqlCommand cmd;
+                ApiResponse? result;
                 if (_kitapId.HasValue)
                 {
-                    // Update işleminde Barkod yerine ISBN sütununu güncelle
-                    cmd = new SqlCommand(@"UPDATE Kitaplar SET 
-                        Baslik = @baslik, Yazar = @yazar, YayinYili = @yil, 
-                        TurID = @tur, StokAdedi = @stok, MevcutAdet = @stok, RafNo = @raf,
-                        SiraNo = @sira, ISBN = @barkod, Aciklama = @aciklama
-                        WHERE KitapID = @id", conn);
-                    cmd.Parameters.AddWithValue("@id", _kitapId);
+                    result = await ApiService.UpdateKitapAsync(_kitapId.Value, request);
                 }
                 else
                 {
-                    // Insert işleminde ISBN sütununa kullanıcı barkodunu kaydet
-                    // Otomatik ISBN gerekmez
-                    cmd = new SqlCommand(@"INSERT INTO Kitaplar 
-                        (Baslik, Yazar, ISBN, YayinYili, TurID, StokAdedi, MevcutAdet, RafNo, SiraNo, Aciklama)
-                        VALUES (@baslik, @yazar, @barkod, @yil, @tur, @stok, @stok, @raf, @sira, @aciklama)", conn);
+                    result = await ApiService.CreateKitapAsync(request);
                 }
                 
-                cmd.Parameters.AddWithValue("@baslik", txtBaslik.Text.Trim());
-                cmd.Parameters.AddWithValue("@yazar", txtYazar.Text.Trim());
-                cmd.Parameters.AddWithValue("@yil", int.TryParse(txtYil.Text, out var yil) ? yil : DBNull.Value);
-                cmd.Parameters.AddWithValue("@tur", cmbTur.SelectedValue ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@stok", int.TryParse(txtStok.Text, out var stok) ? stok : 1);
-                cmd.Parameters.AddWithValue("@raf", string.IsNullOrEmpty(txtRaf.Text) ? DBNull.Value : txtRaf.Text);
-                cmd.Parameters.AddWithValue("@sira", string.IsNullOrEmpty(txtSira.Text) ? DBNull.Value : txtSira.Text);
-                cmd.Parameters.AddWithValue("@barkod", txtBarkod.Text.Trim()); // ISBN parametresi için de bunu kullanıyoruz
-                cmd.Parameters.AddWithValue("@aciklama", string.IsNullOrEmpty(txtAciklama.Text) ? DBNull.Value : txtAciklama.Text);
-                
-                try 
+                if (result != null && result.Success)
                 {
-                    cmd.ExecuteNonQuery();
                     DialogResult = true;
                     Close();
                 }
-                catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
+                else
                 {
-                    // Eğer Barkod çakışırsa ve boş değilse uyarı ver
-                    if (!string.IsNullOrEmpty(txtBarkod.Text))
-                        MessageBox.Show("Bu barkod numarası zaten kayıtlı!", "Mükerrer Kayıt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    else
-                        // Eğer boş barkod çakışıyorsa (Unique NULL sorunu), otomatik barkod ata ve tekrar dene
-                        MessageBox.Show("Sistem hatası: Otomatik barkod oluşturulamadı. Lütfen manuel bir barkod giriniz.", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(result?.Mesaj ?? "Kayıt yapılamadı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)

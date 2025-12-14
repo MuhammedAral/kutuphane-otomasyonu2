@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -12,106 +11,78 @@ namespace KutuphaneOtomasyon.Pages
         public OduncPage()
         {
             InitializeComponent();
-            Loaded += (s, e) => { _isLoaded = true; LoadOduncler(); LoadStats(); };
+            Loaded += async (s, e) => { _isLoaded = true; await LoadDataAsync(); };
         }
         
-        private void LoadStats()
+        private async Task LoadDataAsync()
+        {
+            await Task.WhenAll(LoadOdunclerAsync(), LoadStatsAsync());
+        }
+        
+        private async Task LoadStatsAsync()
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                var gecikmeUcreti = DatabaseHelper.GetGecikmeUcreti();
-                
-                // Aktif ödünç sayısı
-                using var cmdAktif = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE IadeTarihi IS NULL", conn);
-                txtAktifOdunc.Text = cmdAktif.ExecuteScalar()?.ToString() ?? "0";
-                
-                // Geciken sayısı ve toplam ücret
-                using var cmdGeciken = new SqlCommand(@"
-                    SELECT COUNT(*) as Geciken, 
-                           ISNULL(SUM(DATEDIFF(DAY, BeklenenIadeTarihi, GETDATE())), 0) as ToplamGun
-                    FROM OduncIslemleri 
-                    WHERE IadeTarihi IS NULL AND BeklenenIadeTarihi < GETDATE()", conn);
-                
-                using var reader = cmdGeciken.ExecuteReader();
-                if (reader.Read())
+                var stats = await ApiService.GetOduncStatsAsync();
+                if (stats != null)
                 {
-                    txtGeciken.Text = reader["Geciken"]?.ToString() ?? "0";
-                    var toplamGun = Convert.ToInt32(reader["ToplamGun"]);
-                    txtToplamUcret.Text = $"₺{(toplamGun * gecikmeUcreti):F2}";
+                    txtAktifOdunc.Text = stats.AktifOdunc.ToString();
+                    txtGeciken.Text = stats.GecikenOdunc.ToString();
+                    txtToplamUcret.Text = $"₺{stats.ToplamUcret:F2}";
+                    txtBugunIade.Text = stats.BugunIade.ToString();
                 }
-                reader.Close();
-                
-                // Bugün iade edilenler
-                using var cmdBugun = new SqlCommand(@"
-                    SELECT COUNT(*) FROM OduncIslemleri 
-                    WHERE CAST(IadeTarihi AS DATE) = CAST(GETDATE() AS DATE)", conn);
-                txtBugunIade.Text = cmdBugun.ExecuteScalar()?.ToString() ?? "0";
             }
-            catch (Exception)
-            {
-                // İstatistikler kritik değil, sayfa yüklenmeye devam eder
-            }
+            catch { }
         }
         
-        private void LoadOduncler()
+        private async Task LoadOdunclerAsync()
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                var gecikmeUcreti = DatabaseHelper.GetGecikmeUcreti();
-                
-                var query = @"
-                    SELECT o.IslemID, k.Baslik, u.AdSoyad, o.OduncTarihi, o.BeklenenIadeTarihi, o.IadeTarihi,
-                           CASE WHEN o.IadeTarihi IS NULL THEN 'Ödünçte' ELSE 'İade Edildi' END as Durum,
-                           CASE 
-                               WHEN o.IadeTarihi IS NULL AND o.BeklenenIadeTarihi < GETDATE() 
-                               THEN DATEDIFF(DAY, o.BeklenenIadeTarihi, GETDATE()) 
-                               ELSE 0 
-                           END as GecikmeGun
-                    FROM OduncIslemleri o
-                    INNER JOIN Kitaplar k ON o.KitapID = k.KitapID
-                    INNER JOIN Kullanicilar u ON o.UyeID = u.KullaniciID
-                    WHERE 1=1"; // WHERE 1=1 ekledim ki diğer koşulları AND ile ekleyebileyim
-                
+                string? filter = null;
                 if (rbOdunc?.IsChecked == true)
-                    query += " AND o.IadeTarihi IS NULL";
+                    filter = "Oduncte";
                 else if (rbIade?.IsChecked == true)
-                    query += " AND o.IadeTarihi IS NOT NULL";
+                    filter = "IadeEdilmis";
                 else if (rbGeciken?.IsChecked == true)
-                    query += " AND o.IadeTarihi IS NULL AND o.BeklenenIadeTarihi < GETDATE()";
-
-                // Arama Filtresi
-                if (txtSearch != null && !string.IsNullOrWhiteSpace(txtSearch.Text))
+                    filter = "Geciken";
+                
+                var search = txtSearch?.Text?.Trim();
+                
+                var oduncler = await ApiService.GetOdunclerAsync(filter, search);
+                if (oduncler != null)
                 {
-                    query += " AND (k.Baslik LIKE @search OR u.AdSoyad LIKE @search)";
+                    var stats = await ApiService.GetOduncStatsAsync();
+                    var gecikmeUcreti = stats?.GecikmeUcreti ?? 2.50m;
+                    
+                    var dt = new DataTable();
+                    dt.Columns.Add("IslemID", typeof(int));
+                    dt.Columns.Add("Baslik", typeof(string));
+                    dt.Columns.Add("AdSoyad", typeof(string));
+                    dt.Columns.Add("OduncTarihi", typeof(DateTime));
+                    dt.Columns.Add("BeklenenIadeTarihi", typeof(DateTime));
+                    dt.Columns.Add("IadeTarihi", typeof(DateTime));
+                    dt.Columns.Add("Durum", typeof(string));
+                    dt.Columns.Add("GecikmeGun", typeof(int));
+                    dt.Columns.Add("GecikmeUcreti", typeof(decimal));
+                    
+                    foreach (var o in oduncler)
+                    {
+                        var row = dt.NewRow();
+                        row["IslemID"] = o.IslemID;
+                        row["Baslik"] = o.Baslik;
+                        row["AdSoyad"] = o.AdSoyad;
+                        row["OduncTarihi"] = o.OduncTarihi;
+                        row["BeklenenIadeTarihi"] = o.BeklenenIadeTarihi;
+                        if (o.IadeTarihi.HasValue) row["IadeTarihi"] = o.IadeTarihi.Value;
+                        row["Durum"] = o.Durum;
+                        row["GecikmeGun"] = o.GecikmeGun;
+                        row["GecikmeUcreti"] = o.GecikmeGun > 0 ? o.GecikmeGun * gecikmeUcreti : 0;
+                        dt.Rows.Add(row);
+                    }
+                    
+                    dgOdunc.ItemsSource = dt.DefaultView;
                 }
-                
-                query += " ORDER BY o.IslemID DESC";
-                
-                var adapter = new SqlDataAdapter(query, conn);
-
-                if (txtSearch != null && !string.IsNullOrWhiteSpace(txtSearch.Text))
-                {
-                    adapter.SelectCommand.Parameters.AddWithValue("@search", $"%{txtSearch.Text}%");
-                }
-                
-                var dt = new DataTable();
-                adapter.Fill(dt);
-                
-                // Gecikme ücreti hesapla
-                dt.Columns.Add("GecikmeUcreti", typeof(decimal));
-                foreach (DataRow row in dt.Rows)
-                {
-                    var gecikmeGun = Convert.ToInt32(row["GecikmeGun"]);
-                    row["GecikmeUcreti"] = gecikmeGun > 0 ? gecikmeGun * gecikmeUcreti : 0;
-                }
-                
-                dgOdunc.ItemsSource = dt.DefaultView;
             }
             catch (Exception ex)
             {
@@ -119,17 +90,16 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
         
-        private void YeniOdunc_Click(object sender, RoutedEventArgs e)
+        private async void YeniOdunc_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OduncDialog();
             if (dialog.ShowDialog() == true)
             {
-                LoadOduncler();
-                LoadStats();
+                await LoadDataAsync();
             }
         }
         
-        private void IadeAl_Click(object sender, RoutedEventArgs e)
+        private async void IadeAl_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.DataContext is DataRowView row)
             {
@@ -150,25 +120,23 @@ namespace KutuphaneOtomasyon.Pages
                 {
                     try
                     {
-                        using var conn = DatabaseHelper.GetConnection();
-                        conn.Open();
+                        var islemId = Convert.ToInt32(row["IslemID"]);
+                        var result = await ApiService.IadeAsync(islemId);
                         
-                        using var cmd = new SqlCommand(@"
-                            UPDATE OduncIslemleri SET IadeTarihi = GETDATE(), CezaMiktari = @ceza WHERE IslemID = @id;
-                            UPDATE Kitaplar SET MevcutAdet = MevcutAdet + 1 
-                            WHERE KitapID = (SELECT KitapID FROM OduncIslemleri WHERE IslemID = @id)", conn);
-                        cmd.Parameters.AddWithValue("@id", row["IslemID"]);
-                        cmd.Parameters.AddWithValue("@ceza", gecikmeUcreti);
-                        cmd.ExecuteNonQuery();
-                        
-                        LoadOduncler();
-                        LoadStats();
-                        
-                        var iadeMesaj = gecikmeGun > 0
-                            ? $"✅ Kitap iade alındı!\n\n💰 Tahsil edilecek: ₺{gecikmeUcreti:F2}"
-                            : "✅ Kitap başarıyla iade alındı!";
-                        
-                        MessageBox.Show(iadeMesaj, "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                        if (result != null && result.Success)
+                        {
+                            await LoadDataAsync();
+                            
+                            var iadeMesaj = result.GecikmeGun > 0
+                                ? $"✅ Kitap iade alındı!\n\n💰 Tahsil edilecek: ₺{result.CezaMiktari:F2}"
+                                : "✅ Kitap başarıyla iade alındı!";
+                            
+                            MessageBox.Show(iadeMesaj, "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show(result?.Mesaj ?? "İade işlemi başarısız!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -178,14 +146,14 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
         
-        private void Filter_Changed(object sender, RoutedEventArgs e)
+        private async void Filter_Changed(object sender, RoutedEventArgs e)
         {
-            if (_isLoaded) LoadOduncler();
+            if (_isLoaded) await LoadOdunclerAsync();
         }
 
-        private void Search_TextChanged(object sender, TextChangedEventArgs e)
+        private async void Search_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_isLoaded) LoadOduncler();
+            if (_isLoaded) await LoadOdunclerAsync();
         }
 
         private void BarkodTara_Click(object sender, RoutedEventArgs e)
@@ -198,5 +166,3 @@ namespace KutuphaneOtomasyon.Pages
         }
     }
 }
-
-

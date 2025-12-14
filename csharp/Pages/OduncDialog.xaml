@@ -35,14 +35,25 @@
                 </Button>
             </Grid>
             
-            <ListBox x:Name="lstKitaplar" Height="70" Background="#252536" Foreground="White" 
+            <ListBox x:Name="lstKitaplar" Height="100" Background="#252536"
                      BorderBrush="#3a3a4e" BorderThickness="1" Margin="0,0,0,10"
                      SelectionChanged="Kitap_Selected">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding Baslik}" Foreground="White" FontSize="12"/>
+                        <TextBlock Text="{Binding baslik}" Foreground="#FFFFFF" FontSize="13" Padding="4,2"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#3b82f6"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
             </ListBox>
             
             <!-- Üye Arama -->
@@ -50,14 +61,25 @@
             <TextBox x:Name="txtUyeAra" Height="32" Background="#252536" Foreground="White" 
                      BorderBrush="#3a3a4e" BorderThickness="1" Padding="8,6" FontSize="12" Margin="0,0,0,3"
                      TextChanged="UyeAra_TextChanged"/>
-            <ListBox x:Name="lstUyeler" Height="70" Background="#252536" Foreground="White" 
+            <ListBox x:Name="lstUyeler" Height="100" Background="#252536"
                      BorderBrush="#3a3a4e" BorderThickness="1" Margin="0,0,0,10"
                      SelectionChanged="Uye_Selected">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding AdSoyad}" Foreground="White" FontSize="12"/>
+                        <TextBlock Text="{Binding adsoyad}" Foreground="#FFFFFF" FontSize="13" Padding="4,2"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#3b82f6"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
             </ListBox>
             
             <!-- İade Süresi -->

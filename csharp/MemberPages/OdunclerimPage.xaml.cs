@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using System.Windows.Controls;
 
 namespace KutuphaneOtomasyon.MemberPages
@@ -12,32 +11,32 @@ namespace KutuphaneOtomasyon.MemberPages
         {
             InitializeComponent();
             _userId = userId;
-            LoadOdunc();
+            Loaded += async (s, e) => await LoadOduncAsync();
         }
         
-        private void LoadOdunc()
+        private async Task LoadOduncAsync()
         {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            
-            using var cmd = new SqlCommand(@"
-                SELECT k.Baslik, o.OduncTarihi, o.BeklenenIadeTarihi, 
-                    CASE WHEN o.Durum = 'Odunc' THEN '📖 Ödünçte' ELSE '✅ İade Edildi' END as DurumText,
-                    CASE 
-                        WHEN o.Durum = 'Odunc' AND o.BeklenenIadeTarihi < GETDATE() 
-                        THEN CAST(DATEDIFF(DAY, o.BeklenenIadeTarihi, GETDATE()) AS VARCHAR) + ' gün'
-                        ELSE '' 
-                    END as Gecikme
-                FROM OduncIslemleri o
-                JOIN Kitaplar k ON o.KitapID = k.KitapID
-                WHERE o.UyeID = @id
-                ORDER BY o.IslemID DESC", conn);
-            cmd.Parameters.AddWithValue("@id", _userId);
-            
-            using var adapter = new SqlDataAdapter(cmd);
-            var dt = new DataTable();
-            adapter.Fill(dt);
-            dgOdunc.ItemsSource = dt.DefaultView;
+            try
+            {
+                var oduncler = await ApiService.GetUyeOdunclerAsync(_userId);
+                if (oduncler != null)
+                {
+                    var dt = new DataTable();
+                    dt.Columns.Add("Baslik", typeof(string));
+                    dt.Columns.Add("OduncTarihi", typeof(DateTime));
+                    dt.Columns.Add("BeklenenIadeTarihi", typeof(DateTime));
+                    dt.Columns.Add("DurumText", typeof(string));
+                    dt.Columns.Add("Gecikme", typeof(string));
+                    
+                    foreach (var o in oduncler)
+                    {
+                        dt.Rows.Add(o.Baslik, o.OduncTarihi, o.BeklenenIadeTarihi, o.DurumText, o.Gecikme);
+                    }
+                    
+                    dgOdunc.ItemsSource = dt.DefaultView;
+                }
+            }
+            catch { }
         }
     }
 }

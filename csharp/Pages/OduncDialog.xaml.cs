@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -15,25 +14,54 @@ namespace KutuphaneOtomasyon.Pages
         public OduncDialog()
         {
             InitializeComponent();
-            Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
-            LoadData();
+            Loaded += async (s, e) => {
+                DarkModeHelper.EnableDarkMode(this);
+                await LoadDataAsync();
+            };
             txtGun.Text = DatabaseHelper.GetMaxOduncGun().ToString();
         }
         
-        private void LoadData()
+        private async Task LoadDataAsync()
         {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            
-            // Mevcut kitaplar - Kitap adı ve yazar
-            using var kitapAdapter = new SqlDataAdapter("SELECT KitapID, Baslik + ' - ' + Yazar as Baslik FROM Kitaplar WHERE MevcutAdet > 0 ORDER BY Baslik", conn);
-            kitapAdapter.Fill(_kitaplar);
-            lstKitaplar.ItemsSource = _kitaplar.DefaultView;
-            
-            // Üyeler
-            using var uyeAdapter = new SqlDataAdapter("SELECT KullaniciID, AdSoyad FROM Kullanicilar WHERE Rol = 'Uye' ORDER BY AdSoyad", conn);
-            uyeAdapter.Fill(_uyeler);
-            lstUyeler.ItemsSource = _uyeler.DefaultView;
+            try
+            {
+                // API'den kitapları yükle
+                var kitaplar = await ApiService.GetMevcutKitaplarAsync();
+                if (kitaplar != null)
+                {
+                    _kitaplar = new DataTable();
+                    _kitaplar.Columns.Add("kitapid", typeof(int));
+                    _kitaplar.Columns.Add("baslik", typeof(string));
+                    
+                    foreach (var k in kitaplar)
+                    {
+                        var displayText = !string.IsNullOrEmpty(k.Yazar) 
+                            ? $"{k.Baslik} - {k.Yazar}" 
+                            : k.Baslik;
+                        _kitaplar.Rows.Add(k.KitapID, displayText);
+                    }
+                    lstKitaplar.ItemsSource = _kitaplar.DefaultView;
+                }
+                
+                // API'den üyeleri yükle
+                var uyeler = await ApiService.GetUyelerForOduncAsync();
+                if (uyeler != null)
+                {
+                    _uyeler = new DataTable();
+                    _uyeler.Columns.Add("kullaniciid", typeof(int));
+                    _uyeler.Columns.Add("adsoyad", typeof(string));
+                    
+                    foreach (var u in uyeler)
+                    {
+                        _uyeler.Rows.Add(u.KullaniciID, u.AdSoyad);
+                    }
+                    lstUyeler.ItemsSource = _uyeler.DefaultView;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Veriler yüklenemedi: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         
         private void KitapAra_TextChanged(object sender, TextChangedEventArgs e)
@@ -42,7 +70,7 @@ namespace KutuphaneOtomasyon.Pages
             if (string.IsNullOrEmpty(search))
                 _kitaplar.DefaultView.RowFilter = "";
             else
-                _kitaplar.DefaultView.RowFilter = $"Baslik LIKE '%{search}%'";
+                _kitaplar.DefaultView.RowFilter = $"baslik LIKE '%{search}%'";
         }
         
         private void UyeAra_TextChanged(object sender, TextChangedEventArgs e)
@@ -51,15 +79,15 @@ namespace KutuphaneOtomasyon.Pages
             if (string.IsNullOrEmpty(search))
                 _uyeler.DefaultView.RowFilter = "";
             else
-                _uyeler.DefaultView.RowFilter = $"AdSoyad LIKE '%{search}%'";
+                _uyeler.DefaultView.RowFilter = $"adsoyad LIKE '%{search}%'";
         }
         
         private void Kitap_Selected(object sender, SelectionChangedEventArgs e)
         {
             if (lstKitaplar.SelectedItem is DataRowView row)
             {
-                _selectedKitapId = Convert.ToInt32(row["KitapID"]);
-                txtKitapAra.Text = row["Baslik"].ToString();
+                _selectedKitapId = Convert.ToInt32(row["kitapid"]);
+                txtKitapAra.Text = row["baslik"].ToString();
             }
         }
         
@@ -67,12 +95,12 @@ namespace KutuphaneOtomasyon.Pages
         {
             if (lstUyeler.SelectedItem is DataRowView row)
             {
-                _selectedUyeId = Convert.ToInt32(row["KullaniciID"]);
-                txtUyeAra.Text = row["AdSoyad"].ToString();
+                _selectedUyeId = Convert.ToInt32(row["kullaniciid"]);
+                txtUyeAra.Text = row["adsoyad"].ToString();
             }
         }
         
-        private void Kaydet_Click(object sender, RoutedEventArgs e)
+        private async void Kaydet_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedKitapId == null || _selectedUyeId == null)
             {
@@ -92,20 +120,16 @@ namespace KutuphaneOtomasyon.Pages
             
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                using var cmd = new SqlCommand(@"
-                    INSERT INTO OduncIslemleri (KitapID, UyeID, BeklenenIadeTarihi) 
-                    VALUES (@kitap, @uye, DATEADD(DAY, @gun, GETDATE()));
-                    UPDATE Kitaplar SET MevcutAdet = MevcutAdet - 1 WHERE KitapID = @kitap", conn);
-                cmd.Parameters.AddWithValue("@kitap", _selectedKitapId);
-                cmd.Parameters.AddWithValue("@uye", _selectedUyeId);
-                cmd.Parameters.AddWithValue("@gun", gun);
-                cmd.ExecuteNonQuery();
-                
-                DialogResult = true;
-                Close();
+                var result = await ApiService.CreateOduncAsync(_selectedKitapId.Value, _selectedUyeId.Value);
+                if (result != null && result.Success)
+                {
+                    DialogResult = true;
+                    Close();
+                }
+                else
+                {
+                    MessageBox.Show(result?.Mesaj ?? "Ödünç oluşturulamadı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -115,24 +139,21 @@ namespace KutuphaneOtomasyon.Pages
         
         private void Iptal_Click(object sender, RoutedEventArgs e) => Close();
 
-        private void BarkodTara_Click(object sender, RoutedEventArgs e)
+        private async void BarkodTara_Click(object sender, RoutedEventArgs e)
         {
             var scanner = new BarcodeScannerDialog();
             if (scanner.ShowDialog() == true)
             {
                 var scannedIsbn = scanner.ScannedBarcode;
-                // Veritabanından bu ISBN'e ait kitabı bul
                 try 
                 {
-                    using var conn = DatabaseHelper.GetConnection();
-                    conn.Open();
-                    using var cmd = new SqlCommand("SELECT Baslik FROM Kitaplar WHERE ISBN = @isbn", conn);
-                    cmd.Parameters.AddWithValue("@isbn", scannedIsbn);
-                    var result = cmd.ExecuteScalar();
-                    
-                    if (result != null)
+                    // API'den ISBN kontrolü
+                    var kitaplar = await ApiService.GetKitaplarAsync(scannedIsbn);
+                    if (kitaplar != null && kitaplar.Count > 0)
                     {
-                        txtKitapAra.Text = result.ToString(); // Kitap adını yaz, böylece liste filtrelenir
+                        var kitap = kitaplar.First();
+                        txtKitapAra.Text = kitap.Baslik;
+                        _selectedKitapId = kitap.KitapID;
                     }
                     else
                     {

@@ -1,9 +1,5 @@
-using Microsoft.Data.SqlClient;
-using System.Security.Cryptography;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace KutuphaneOtomasyon.MemberPages
 {
@@ -15,26 +11,20 @@ namespace KutuphaneOtomasyon.MemberPages
         {
             InitializeComponent();
             _userId = userId;
-            LoadProfil();
+            Loaded += async (s, e) => await LoadProfilAsync();
         }
         
-        private void LoadProfil()
+        private async Task LoadProfilAsync()
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                using var cmd = new SqlCommand("SELECT AdSoyad, KullaniciAdi, Email, Telefon FROM Kullanicilar WHERE KullaniciID = @id", conn);
-                cmd.Parameters.AddWithValue("@id", _userId);
-                
-                using var reader = cmd.ExecuteReader();
-                if (reader.Read())
+                var profil = await ApiService.GetUyeProfilAsync(_userId);
+                if (profil != null)
                 {
-                    txtAdSoyad.Text = reader["AdSoyad"]?.ToString();
-                    txtUsername.Text = reader["KullaniciAdi"]?.ToString();
-                    txtEmail.Text = reader["Email"]?.ToString();
-                    txtTelefon.Text = reader["Telefon"]?.ToString();
+                    txtAdSoyad.Text = profil.AdSoyad;
+                    txtUsername.Text = profil.KullaniciAdi;
+                    txtEmail.Text = profil.Email;
+                    txtTelefon.Text = profil.Telefon;
                 }
             }
             catch (Exception ex)
@@ -43,7 +33,7 @@ namespace KutuphaneOtomasyon.MemberPages
             }
         }
 
-        private void Kaydet_Click(object sender, RoutedEventArgs e)
+        private async void Kaydet_Click(object sender, RoutedEventArgs e)
         {
             var adSoyad = txtAdSoyad.Text.Trim();
             var username = txtUsername.Text.Trim();
@@ -65,7 +55,6 @@ namespace KutuphaneOtomasyon.MemberPages
                 return;
             }
             
-            // Telefon ve Şifre uzunluk kontrolleri (Kullanıcının önceki isteği)
             if (!string.IsNullOrEmpty(telefon) && telefon.Length != 11)
             {
                 MessageBox.Show("Telefon numarası 11 haneli olmalıdır (05XXXXXXXXX)!", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -88,63 +77,29 @@ namespace KutuphaneOtomasyon.MemberPages
 
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-
-                // 1. Önce Mevcut Şifreyi Doğrula
-                // Not: DatabaseHelper içinde Login kontrolü var ama hash'i doğrudan kontrol etsek daha hızlı (Login LastLogin güncelliyor olabilir)
-                // Basitlik için DatabaseHelper.HashPassword kullanıp veritabanındaki ile karşılaştıracağız.
-                
-                using var verifyCmd = new SqlCommand("SELECT Sifre FROM Kullanicilar WHERE KullaniciID = @id", conn);
-                verifyCmd.Parameters.AddWithValue("@id", _userId);
-                var storedHash = verifyCmd.ExecuteScalar()?.ToString();
-
-                if (storedHash != DatabaseHelper.HashPassword(currentPass))
+                var request = new ProfilUpdateRequest
                 {
-                    MessageBox.Show("Mevcut şifreniz hatalı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                // 2. Kullanıcı Adı Çakışma Kontrolü (Eğer değiştirdiyse)
-                using var userCheckCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user AND KullaniciID != @id", conn);
-                userCheckCmd.Parameters.AddWithValue("@user", username);
-                userCheckCmd.Parameters.AddWithValue("@id", _userId);
+                    AdSoyad = adSoyad,
+                    KullaniciAdi = username,
+                    Email = string.IsNullOrEmpty(email) ? null : email,
+                    Telefon = string.IsNullOrEmpty(telefon) ? null : telefon,
+                    MevcutSifre = currentPass,
+                    YeniSifre = string.IsNullOrEmpty(newPass) ? null : newPass
+                };
                 
-                if ((int)userCheckCmd.ExecuteScalar() > 0)
+                var result = await ApiService.UpdateUyeProfilAsync(_userId, request);
+                
+                if (result != null && result.Success)
                 {
-                    MessageBox.Show("Bu kullanıcı adı başka biri tarafından kullanılıyor!", "Hata", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                    MessageBox.Show(result.Mesaj ?? "Profil bilgileriniz başarıyla güncellendi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    txtCurrentPassword.Clear();
+                    txtNewPassword.Clear();
+                    txtNewPasswordConfirm.Clear();
                 }
-
-                // 3. Güncelleme
-                string updateQuery = @"
-                    UPDATE Kullanicilar SET 
-                        AdSoyad = @ad, 
-                        KullaniciAdi = @user, 
-                        Email = @email, 
-                        Telefon = @tel
-                        " + (!string.IsNullOrEmpty(newPass) ? ", Sifre = @pass" : "") + @"
-                    WHERE KullaniciID = @id";
-
-                using var updateCmd = new SqlCommand(updateQuery, conn);
-                updateCmd.Parameters.AddWithValue("@ad", adSoyad);
-                updateCmd.Parameters.AddWithValue("@user", username);
-                updateCmd.Parameters.AddWithValue("@email", string.IsNullOrEmpty(email) ? DBNull.Value : email);
-                updateCmd.Parameters.AddWithValue("@tel", string.IsNullOrEmpty(telefon) ? DBNull.Value : telefon);
-                updateCmd.Parameters.AddWithValue("@id", _userId);
-                
-                if (!string.IsNullOrEmpty(newPass))
+                else
                 {
-                     updateCmd.Parameters.AddWithValue("@pass", DatabaseHelper.HashPassword(newPass));
+                    MessageBox.Show(result?.Mesaj ?? "Güncelleme başarısız!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-
-                updateCmd.ExecuteNonQuery();
-                MessageBox.Show("Profil bilgileriniz başarıyla güncellendi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
-                
-                // Formu temizle (Şifre alanlarını)
-                txtCurrentPassword.Clear();
-                txtNewPassword.Clear();
-                txtNewPasswordConfirm.Clear();
             }
             catch (Exception ex)
             {

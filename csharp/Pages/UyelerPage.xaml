@@ -5,23 +5,6 @@
       Title="Üye Yönetimi"
       Background="#0f0f1a">
     
-    <Page.Resources>
-        <!-- Modern DataGrid Row Style -->
-        <Style x:Key="ModernRowStyle" TargetType="DataGridRow">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#2563eb"/>
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1e3a5f"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-    </Page.Resources>
-    
     <Grid Margin="30">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -72,7 +55,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 
-                <!-- Modern Arama Kutusu -->
+                <!-- Arama Kutusu -->
                 <Border Grid.Column="0" Background="#252540" CornerRadius="22" Height="45">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -118,70 +101,82 @@
         <TextBlock Grid.Row="2" x:Name="txtSonuc" Text="0 üye bulundu" 
                    Foreground="#6b7280" FontSize="13" Margin="0,0,0,12"/>
         
-        <!-- Modern Tablo -->
-        <Border Grid.Row="3" Background="#1a1a2e" CornerRadius="12" Padding="0">
+        <!-- Tablo -->
+        <Border Grid.Row="3" Background="#1a1a2e" CornerRadius="12" Padding="15">
             <DataGrid x:Name="dgUyeler" AutoGenerateColumns="False"
-                      Background="Transparent" Foreground="#e5e7eb"
+                      Background="Transparent"
                       GridLinesVisibility="None"
                       BorderThickness="0"
                       HeadersVisibility="Column"
                       CanUserAddRows="False"
                       SelectionMode="Single"
                       IsReadOnly="True"
-                      RowStyle="{StaticResource ModernRowStyle}"
+                      RowBackground="#1a1a2e"
+                      AlternatingRowBackground="#252540"
+                      RowHeight="45"
                       FontSize="13"
                       Sorting="DataGrid_Sorting">
                 <DataGrid.ColumnHeaderStyle>
                     <Style TargetType="DataGridColumnHeader">
                         <Setter Property="Background" Value="#252540"/>
                         <Setter Property="Foreground" Value="#9ca3af"/>
-                        <Setter Property="Padding" Value="15,14"/>
+                        <Setter Property="Padding" Value="15,12"/>
                         <Setter Property="FontWeight" Value="SemiBold"/>
                         <Setter Property="FontSize" Value="12"/>
                         <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Cursor" Value="Hand"/> <!-- Başlıklarda El İşareti -->
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
-                <DataGrid.CellStyle>
-                    <Style TargetType="DataGridCell">
-                        <Setter Property="Padding" Value="15,12"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Foreground" Value="#e5e7eb"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Cursor" Value="Hand"/> <!-- Tüm Hücrelerde El İşareti -->
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="DataGridCell">
-                                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter VerticalAlignment="Center"/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </DataGrid.CellStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="ID" Binding="{Binding KullaniciID}" Width="60"/>
-                    <DataGridTextColumn Header="Kullanıcı Adı" Binding="{Binding KullaniciAdi}" Width="130"/>
-                    <DataGridTextColumn Header="Ad Soyad" Binding="{Binding AdSoyad}" Width="*"/>
-                    <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="180"/>
-                    <DataGridTextColumn Header="Telefon" Binding="{Binding Telefon}" Width="120"/>
+                    <DataGridTemplateColumn Header="ID" Width="60">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding [KullaniciID]}" Foreground="White" VerticalAlignment="Center" Margin="10,0"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Kullanıcı Adı" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding [KullaniciAdi]}" Foreground="White" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Ad Soyad" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding [AdSoyad]}" Foreground="White" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Email" Width="180">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding [Email]}" Foreground="White" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Telefon" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding [Telefon]}" Foreground="White" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Rol" Width="100">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left"
-                                        Background="{Binding Rol, Converter={x:Null}}">
+                                <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="#10b981"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Rol}" Value="Yonetici">
+                                                <DataTrigger Binding="{Binding [Rol]}" Value="Yonetici">
                                                     <Setter Property="Background" Value="#8b5cf6"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Text="{Binding Rol}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding [Rol]}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                                 </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -191,21 +186,14 @@
                             <DataTemplate>
                                 <Button Content="🗑" Click="Sil_Click" ToolTip="Sil"
                                         Width="32" Height="28" FontSize="12"
-                                        Background="#ef4444" Foreground="White" BorderThickness="0">
-                                    <Button.Style>
-                                        <Style TargetType="Button">
-                                            <Setter Property="Cursor" Value="Hand"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Button">
-                                                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
-                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </Button.Style>
+                                        Background="#ef4444" Foreground="White" BorderThickness="0" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
                                 </Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

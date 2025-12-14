@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using System.Windows;
+﻿using System.Windows;
 
 namespace KutuphaneOtomasyon.Pages
 {
@@ -11,7 +10,7 @@ namespace KutuphaneOtomasyon.Pages
             Loaded += (s, e) => DarkModeHelper.EnableDarkMode(this);
         }
         
-        private void Kaydet_Click(object sender, RoutedEventArgs e)
+        private async void Kaydet_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtAdSoyad.Text) || 
                 string.IsNullOrWhiteSpace(txtUsername.Text) || 
@@ -36,30 +35,26 @@ namespace KutuphaneOtomasyon.Pages
             
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                using var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Kullanicilar WHERE KullaniciAdi = @user", conn);
-                checkCmd.Parameters.AddWithValue("@user", txtUsername.Text.Trim());
-                if ((int)checkCmd.ExecuteScalar() > 0)
+                var uye = new UyeRequest
                 {
-                    MessageBox.Show("Bu kullanıcı adı zaten kullanılıyor!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    KullaniciAdi = txtUsername.Text.Trim(),
+                    Sifre = txtPassword.Password,
+                    AdSoyad = txtAdSoyad.Text.Trim(),
+                    Email = string.IsNullOrEmpty(txtEmail.Text) ? null : txtEmail.Text.Trim(),
+                    Telefon = string.IsNullOrEmpty(txtTelefon.Text) ? null : txtTelefon.Text.Trim()
+                };
+                
+                var result = await ApiService.CreateUyeAsync(uye);
+                
+                if (result != null && result.Success)
+                {
+                    DialogResult = true;
+                    Close();
                 }
-                
-                var hash = DatabaseHelper.HashPassword(txtPassword.Password);
-                using var cmd = new SqlCommand(@"INSERT INTO Kullanicilar 
-                    (KullaniciAdi, Sifre, AdSoyad, Email, Telefon, Rol) 
-                    VALUES (@user, @pass, @ad, @email, @tel, 'Uye')", conn);
-                cmd.Parameters.AddWithValue("@user", txtUsername.Text.Trim());
-                cmd.Parameters.AddWithValue("@pass", hash);
-                cmd.Parameters.AddWithValue("@ad", txtAdSoyad.Text.Trim());
-                cmd.Parameters.AddWithValue("@email", string.IsNullOrEmpty(txtEmail.Text) ? DBNull.Value : txtEmail.Text);
-                cmd.Parameters.AddWithValue("@tel", string.IsNullOrEmpty(txtTelefon.Text) ? DBNull.Value : txtTelefon.Text);
-                cmd.ExecuteNonQuery();
-                
-                DialogResult = true;
-                Close();
+                else
+                {
+                    MessageBox.Show(result?.Mesaj ?? result?.Message ?? "Kayıt yapılamadı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {

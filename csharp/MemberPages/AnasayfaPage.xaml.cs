@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using System.Windows.Controls;
 
 namespace KutuphaneOtomasyon.MemberPages
@@ -13,49 +12,52 @@ namespace KutuphaneOtomasyon.MemberPages
             InitializeComponent();
             _userId = userId;
             txtWelcome.Text = $"Hoş Geldin, {adSoyad}! 👋";
-            LoadStats();
-            LoadSon();
+            Loaded += async (s, e) => await LoadDataAsync();
         }
         
-        private void LoadStats()
+        private async Task LoadDataAsync()
         {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            
-            // Ödünçte
-            using var cmd1 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc'", conn);
-            cmd1.Parameters.AddWithValue("@id", _userId);
-            txtOdunc.Text = cmd1.ExecuteScalar()?.ToString() ?? "0";
-            
-            // Geciken
-            using var cmd2 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc' AND BeklenenIadeTarihi < GETDATE()", conn);
-            cmd2.Parameters.AddWithValue("@id", _userId);
-            txtGeciken.Text = cmd2.ExecuteScalar()?.ToString() ?? "0";
-            
-            // Toplam
-            using var cmd3 = new SqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id", conn);
-            cmd3.Parameters.AddWithValue("@id", _userId);
-            txtToplam.Text = cmd3.ExecuteScalar()?.ToString() ?? "0";
+            await Task.WhenAll(LoadStatsAsync(), LoadSonAsync());
         }
         
-        private void LoadSon()
+        private async Task LoadStatsAsync()
         {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            
-            using var cmd = new SqlCommand(@"
-                SELECT TOP 5 k.Baslik, o.OduncTarihi, o.BeklenenIadeTarihi, 
-                    CASE WHEN o.Durum = 'Odunc' THEN '📖 Ödünçte' ELSE '✅ İade Edildi' END as DurumText
-                FROM OduncIslemleri o
-                JOIN Kitaplar k ON o.KitapID = k.KitapID
-                WHERE o.UyeID = @id
-                ORDER BY o.IslemID DESC", conn);
-            cmd.Parameters.AddWithValue("@id", _userId);
-            
-            using var adapter = new SqlDataAdapter(cmd);
-            var dt = new DataTable();
-            adapter.Fill(dt);
-            dgSon.ItemsSource = dt.DefaultView;
+            try
+            {
+                var stats = await ApiService.GetUyeStatsAsync(_userId);
+                if (stats != null)
+                {
+                    txtOdunc.Text = stats.Oduncte.ToString();
+                    txtGeciken.Text = stats.Geciken.ToString();
+                    txtToplam.Text = stats.Toplam.ToString();
+                }
+            }
+            catch { }
+        }
+        
+        private async Task LoadSonAsync()
+        {
+            try
+            {
+                var islemler = await ApiService.GetUyeSonIslemlerAsync(_userId);
+                if (islemler != null)
+                {
+                    var dt = new DataTable();
+                    dt.Columns.Add("Baslik", typeof(string));
+                    dt.Columns.Add("OduncTarihi", typeof(DateTime));
+                    dt.Columns.Add("BeklenenIadeTarihi", typeof(DateTime));
+                    dt.Columns.Add("DurumText", typeof(string));
+                    
+                    foreach (var i in islemler)
+                    {
+                        var durumText = i.Durum == "Ödünçte" ? "📖 Ödünçte" : "✅ İade Edildi";
+                        dt.Rows.Add(i.Baslik, i.OduncTarihi, i.BeklenenIadeTarihi, durumText);
+                    }
+                    
+                    dgSon.ItemsSource = dt.DefaultView;
+                }
+            }
+            catch { }
         }
     }
 }

@@ -1,9 +1,8 @@
-using System.Data;
+﻿using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using KutuphaneOtomasyon.Pages; // KitapDetayDialog burada
-using Microsoft.Data.SqlClient;
+using KutuphaneOtomasyon.Pages;
 
 namespace KutuphaneOtomasyon.MemberPages
 {
@@ -14,45 +13,48 @@ namespace KutuphaneOtomasyon.MemberPages
         public KitaplarViewPage()
         {
             InitializeComponent();
-            LoadKitaplar();
+            Loaded += async (s, e) => await LoadKitaplarAsync();
         }
 
-        private void LoadKitaplar(string search = "")
+        private async Task LoadKitaplarAsync(string search = "")
         {
-            using var conn = DatabaseHelper.GetConnection();
-            conn.Open();
-            string query = @"
-                SELECT k.KitapID, k.Baslik, k.Yazar, t.TurAdi, 
-                CASE WHEN k.MevcutAdet > 0 THEN CAST(k.MevcutAdet AS NVARCHAR) + ' Adet' ELSE 'Tükendi' END as MevcutText
-                FROM Kitaplar k
-                LEFT JOIN KitapTurleri t ON k.TurID = t.TurID";
-            
-            if (!string.IsNullOrEmpty(search))
+            try
             {
-                query += " WHERE k.Baslik LIKE @search OR k.Yazar LIKE @search OR t.TurAdi LIKE @search";
-            }
-            
-            query += " ORDER BY k.Baslik";
-            
-            using var cmd = new SqlCommand(query, conn);
-            if (!string.IsNullOrEmpty(search))
-                cmd.Parameters.AddWithValue("@search", $"%{search}%");
+                var kitaplar = await ApiService.GetKitaplarAsync(search);
                 
-            using var adapter = new SqlDataAdapter(cmd);
-            _kitaplar = new DataTable();
-            adapter.Fill(_kitaplar);
-            dgKitaplar.ItemsSource = _kitaplar.DefaultView;
+                _kitaplar = new DataTable();
+                _kitaplar.Columns.Add("KitapID", typeof(int));
+                _kitaplar.Columns.Add("Baslik", typeof(string));
+                _kitaplar.Columns.Add("Yazar", typeof(string));
+                _kitaplar.Columns.Add("TurAdi", typeof(string));
+                _kitaplar.Columns.Add("MevcutText", typeof(string));
+                
+                if (kitaplar != null)
+                {
+                    foreach (var k in kitaplar)
+                    {
+                        var mevcutText = k.MevcutAdet > 0 ? $"{k.MevcutAdet} Adet" : "Tükendi";
+                        _kitaplar.Rows.Add(k.KitapID, k.Baslik, k.Yazar ?? "-", k.TurAdi ?? "-", mevcutText);
+                    }
+                }
+                
+                dgKitaplar.ItemsSource = _kitaplar.DefaultView;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Kitaplar yüklenemedi: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void Search_Click(object sender, RoutedEventArgs e)
+        private async void Search_Click(object sender, RoutedEventArgs e)
         {
-            LoadKitaplar(txtSearch.Text.Trim());
+            await LoadKitaplarAsync(txtSearch.Text.Trim());
         }
 
-        private void Search_KeyDown(object sender, KeyEventArgs e)
+        private async void Search_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
-                LoadKitaplar(txtSearch.Text.Trim());
+                await LoadKitaplarAsync(txtSearch.Text.Trim());
         }
 
         private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

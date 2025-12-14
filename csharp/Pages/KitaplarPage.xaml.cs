@@ -16,6 +16,7 @@ namespace KutuphaneOtomasyon.Pages
     public partial class KitaplarPage : Page
     {
         public ObservableCollection<KitapItem> KitaplarListesi { get; set; } = new ObservableCollection<KitapItem>();
+        private bool _isInitializing = false;
 
         public KitaplarPage()
         {
@@ -26,7 +27,9 @@ namespace KutuphaneOtomasyon.Pages
         
         private async Task InitializeAsync()
         {
+            _isInitializing = true;
             await LoadTurlerAsync();
+            _isInitializing = false;
             await LoadKitaplarAsync();
         }
         
@@ -34,19 +37,20 @@ namespace KutuphaneOtomasyon.Pages
         {
             try
             {
-                await using var conn = DatabaseHelper.GetConnection();
-                await conn.OpenAsync();
+                // API'den türleri al
+                var turler = await ApiService.GetTurlerAsync();
                 
                 var dt = new DataTable();
                 dt.Columns.Add("TurID", typeof(int));
                 dt.Columns.Add("TurAdi", typeof(string));
                 dt.Rows.Add(0, "Tüm Türler");
                 
-                await using var cmd = new NpgsqlCommand("SELECT TurID, TurAdi FROM KitapTurleri ORDER BY TurAdi", conn);
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                if (turler != null)
                 {
-                    dt.Rows.Add(reader["TurID"], reader["TurAdi"]);
+                    foreach (var tur in turler)
+                    {
+                        dt.Rows.Add(tur.TurID, tur.TurAdi);
+                    }
                 }
                 
                 cmbTur.ItemsSource = dt.DefaultView;
@@ -64,51 +68,36 @@ namespace KutuphaneOtomasyon.Pages
             {
                 KitaplarListesi.Clear();
 
-                await using var conn = DatabaseHelper.GetConnection();
-                await conn.OpenAsync();
-                
-                var query = @"
-                    SELECT k.KitapID, k.Baslik, k.Yazar, COALESCE(k.ISBN, '') as ISBN, 
-                           COALESCE(kt.TurAdi, '-') as TurAdi, k.YayinYili, k.StokAdedi, k.MevcutAdet, k.TurID
-                    FROM Kitaplar k
-                    LEFT JOIN KitapTurleri kt ON k.TurID = kt.TurID
-                    WHERE 1=1";
-                
-                if (!string.IsNullOrEmpty(search))
-                    query += " AND (k.Baslik LIKE @search OR k.Yazar LIKE @search OR k.ISBN LIKE @search)";
-                
+                // Seçili tür ID'sini al
+                int? turId = null;
                 var selectedTur = cmbTur?.SelectedItem as DataRowView;
                 if (selectedTur != null && Convert.ToInt32(selectedTur["TurID"]) > 0)
-                    query += " AND k.TurID = @turId";
+                    turId = Convert.ToInt32(selectedTur["TurID"]);
                 
-                if (cmbStok?.SelectedIndex == 1)
-                    query += " AND k.MevcutAdet > 0";
-                else if (cmbStok?.SelectedIndex == 2)
-                    query += " AND k.MevcutAdet = 0";
+                // API'den kitapları al
+                var kitaplar = await ApiService.GetKitaplarAsync(search, turId);
                 
-                query += " ORDER BY k.KitapID DESC";
-                
-                await using var cmd = new NpgsqlCommand(query, conn);
-                if (!string.IsNullOrEmpty(search))
-                    cmd.Parameters.AddWithValue("@search", $"%{search}%");
-                if (selectedTur != null && Convert.ToInt32(selectedTur["TurID"]) > 0)
-                    cmd.Parameters.AddWithValue("@turId", selectedTur["TurID"]);
-                
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                if (kitaplar != null)
                 {
-                    KitaplarListesi.Add(new KitapItem
+                    foreach (var k in kitaplar)
                     {
-                        KitapID = Convert.ToInt32(reader["KitapID"]),
-                        Baslik = reader["Baslik"].ToString(),
-                        Yazar = reader["Yazar"].ToString(),
-                        ISBN = reader["ISBN"].ToString(),
-                        TurAdi = reader["TurAdi"].ToString(),
-                        YayinYili = reader["YayinYili"] != DBNull.Value ? Convert.ToInt32(reader["YayinYili"]) : null,
-                        StokAdedi = Convert.ToInt32(reader["StokAdedi"]),
-                        MevcutAdet = Convert.ToInt32(reader["MevcutAdet"]),
-                        TurID = reader["TurID"] != DBNull.Value ? Convert.ToInt32(reader["TurID"]) : 0
-                    });
+                        // Stok filtresi (API'de yoksa client-side uygula)
+                        if (cmbStok?.SelectedIndex == 1 && k.MevcutAdet <= 0) continue;
+                        if (cmbStok?.SelectedIndex == 2 && k.MevcutAdet > 0) continue;
+                        
+                        KitaplarListesi.Add(new KitapItem
+                        {
+                            KitapID = k.KitapID,
+                            Baslik = k.Baslik ?? "",
+                            Yazar = k.Yazar ?? "",
+                            ISBN = k.ISBN ?? "",
+                            TurAdi = k.TurAdi ?? "-",
+                            YayinYili = k.YayinYili,
+                            StokAdedi = k.StokAdedi,
+                            MevcutAdet = k.MevcutAdet,
+                            TurID = k.TurID ?? 0
+                        });
+                    }
                 }
                 
                 dgKitaplar.ItemsSource = KitaplarListesi;
@@ -231,37 +220,22 @@ namespace KutuphaneOtomasyon.Pages
             try
             {
                 // Onay al
-                if (MessageBox.Show($"{seciliKitaplar.Count} kitabı ve ilişkili kayıtları kalıcı olarak silmek istiyor musunuz?", 
+                if (MessageBox.Show($"{seciliKitaplar.Count} kitabı silmek istiyor musunuz?", 
                     "Toplu Silme Onayı", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                     return;
                 
                 var kitapIds = seciliKitaplar.Select(k => k.KitapID).ToList();
-                int silinen = 0;
                 
-                // Arka planda sil - TEK SORGU ile toplu silme (çok daha hızlı!)
-                await Task.Run(() =>
+                var result = await ApiService.DeleteKitaplarTopluAsync(kitapIds);
+                if (result != null && result.Success)
                 {
-                    using var conn = DatabaseHelper.GetConnection();
-                    conn.Open();
-                    
-                    // ID listesini virgülle ayır
-                    var idList = string.Join(",", kitapIds);
-                    
-                    // 1. Değerlendirmeleri toplu sil
-                    using (var cmd = new NpgsqlCommand($"DELETE FROM Degerlendirmeler WHERE KitapID IN ({idList})", conn))
-                        cmd.ExecuteNonQuery();
-                    
-                    // 2. Ödünç kayıtlarını toplu sil
-                    using (var cmd = new NpgsqlCommand($"DELETE FROM OduncIslemleri WHERE KitapID IN ({idList})", conn))
-                        cmd.ExecuteNonQuery();
-                    
-                    // 3. Kitapları toplu sil
-                    using (var cmd = new NpgsqlCommand($"DELETE FROM Kitaplar WHERE KitapID IN ({idList})", conn))
-                        silinen = cmd.ExecuteNonQuery();
-                });
-
-                await LoadKitaplarAsync();
-                MessageBox.Show($"{silinen} kitap ve ilişkili kayıtlar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await LoadKitaplarAsync();
+                    MessageBox.Show($"{seciliKitaplar.Count} kitap silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(result?.Mesaj ?? "Toplu silme başarısız!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -336,65 +310,26 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
         
-        private void Sil_Click(object sender, RoutedEventArgs e)
+        private async void Sil_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 var kitap = GetKitapFromButton(sender);
                 if (kitap == null) return;
                 
-                // Önce bu kitaba ait aktif ödünç var mı kontrol et
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
-                
-                using var checkActiveCmd = new NpgsqlCommand(
-                    "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id AND IadeTarihi IS NULL", conn);
-                checkActiveCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                int activeLoans = Convert.ToInt32(checkActiveCmd.ExecuteScalar());
-                
-                if (activeLoans > 0)
-                {
-                    MessageBox.Show($"Bu kitap şu anda {activeLoans} kişide ödünçte!\n\n" +
-                        "Önce ödünç işlemlerinin tamamlanması gerekiyor.", 
-                        "Silinemez", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                
-                // Geçmiş ödünç kayıtları var mı?
-                using var checkHistoryCmd = new NpgsqlCommand(
-                    "SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id", conn);
-                checkHistoryCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                int historyCount = Convert.ToInt32(checkHistoryCmd.ExecuteScalar());
-                
-                string message = $"'{kitap.Baslik}' kitabını silmek istiyor musunuz?";
-                if (historyCount > 0)
-                {
-                    message += $"\n\n⚠️ Bu kitaba ait {historyCount} ödünç kaydı da silinecek!";
-                }
-                
-                if (MessageBox.Show(message, "Silme Onayı",
+                if (MessageBox.Show($"'{kitap.Baslik}' kitabını silmek istiyor musunuz?", "Silme Onayı",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    // 1. Önce değerlendirmeleri sil
-                    using var deleteRatingsCmd = new NpgsqlCommand(
-                        "DELETE FROM Degerlendirmeler WHERE KitapID = @id", conn);
-                    deleteRatingsCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                    deleteRatingsCmd.ExecuteNonQuery();
-                    
-                    // 2. Sonra ödünç kayıtlarını sil
-                    using var deleteLoansCmd = new NpgsqlCommand(
-                        "DELETE FROM OduncIslemleri WHERE KitapID = @id", conn);
-                    deleteLoansCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                    deleteLoansCmd.ExecuteNonQuery();
-                    
-                    // 3. Son olarak kitabı sil
-                    using var deleteBookCmd = new NpgsqlCommand(
-                        "DELETE FROM Kitaplar WHERE KitapID = @id", conn);
-                    deleteBookCmd.Parameters.AddWithValue("@id", kitap.KitapID);
-                    deleteBookCmd.ExecuteNonQuery();
-                    
-                    _ = LoadKitaplarAsync();
-                    MessageBox.Show("Kitap ve ilişkili kayıtlar silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    var result = await ApiService.DeleteKitapAsync(kitap.KitapID);
+                    if (result != null && result.Success)
+                    {
+                        await LoadKitaplarAsync();
+                        MessageBox.Show("Kitap silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show(result?.Mesaj ?? "Silme başarısız!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             }
             catch (Exception ex)
@@ -446,17 +381,14 @@ namespace KutuphaneOtomasyon.Pages
                 
                 if (openDialog.ShowDialog() == true)
                 {
-                    int eklenen = 0;
+                    var fileName = openDialog.FileName;
+                    var kitaplarToAdd = new List<KitapRequest>();
                     int hatali = 0;
                     var hataListesi = new System.Text.StringBuilder();
-                    var fileName = openDialog.FileName;
 
-                    // Arka planda çalıştır - UI donmayacak
-                    await Task.Run(async () =>
+                    // Dosyayı arka planda oku ve parse et
+                    await Task.Run(() =>
                     {
-                        await using var conn = DatabaseHelper.GetConnection();
-                        await conn.OpenAsync();
-                        
                         if (fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                         {
                             var lines = System.IO.File.ReadAllLines(fileName, System.Text.Encoding.UTF8);
@@ -480,17 +412,11 @@ namespace KutuphaneOtomasyon.Pages
 
                                 if (string.IsNullOrEmpty(baslik)) continue;
 
+                                // Barkod validation
                                 if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
                                 {
                                     hatali++;
                                     hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz barkod ({barkod})");
-                                    continue;
-                                }
-
-                                if (await IsBarcodeExistsAsync(conn, barkod))
-                                {
-                                    hatali++;
-                                    hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Mükerrer barkod ({barkod})");
                                     continue;
                                 }
 
@@ -503,8 +429,17 @@ namespace KutuphaneOtomasyon.Pages
                                 int.TryParse(stokStr, out var stok);
                                 if (stok <= 0) stok = 1;
                                 
-                                await InsertKitapAsync(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
-                                eklenen++;
+                                kitaplarToAdd.Add(new KitapRequest
+                                {
+                                    Baslik = baslik,
+                                    Yazar = yazar,
+                                    YayinYili = yil > 0 ? yil : null,
+                                    StokAdedi = stok,
+                                    ISBN = barkod,
+                                    TurID = 1,
+                                    RafNo = string.IsNullOrEmpty(rafNo) ? null : rafNo,
+                                    SiraNo = string.IsNullOrEmpty(siraNo) ? null : siraNo
+                                });
                             }
                         }
                         else
@@ -526,17 +461,11 @@ namespace KutuphaneOtomasyon.Pages
 
                                 if (string.IsNullOrEmpty(baslik)) continue;
                                 
+                                // Barkod validation
                                 if (string.IsNullOrEmpty(barkod) || barkod.Length != 13 || !long.TryParse(barkod, out _))
                                 {
                                     hatali++;
                                     hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Geçersiz barkod ({barkod})");
-                                    continue;
-                                }
-
-                                if (await IsBarcodeExistsAsync(conn, barkod))
-                                {
-                                    hatali++;
-                                    hataListesi.AppendLine($"Satır {rowNum}: '{baslik}' - Mükerrer barkod ({barkod})");
                                     continue;
                                 }
                                 
@@ -549,21 +478,53 @@ namespace KutuphaneOtomasyon.Pages
                                 int.TryParse(stokStr, out var stok);
                                 if (stok <= 0) stok = 1;
                                 
-                                await InsertKitapAsync(conn, baslik, yazar, yil, stok, barkod, rafNo, siraNo);
-                                eklenen++;
+                                kitaplarToAdd.Add(new KitapRequest
+                                {
+                                    Baslik = baslik,
+                                    Yazar = yazar,
+                                    YayinYili = yil > 0 ? yil : null,
+                                    StokAdedi = stok,
+                                    ISBN = barkod,
+                                    TurID = 1,
+                                    RafNo = string.IsNullOrEmpty(rafNo) ? null : rafNo,
+                                    SiraNo = string.IsNullOrEmpty(siraNo) ? null : siraNo
+                                });
                             }
                         }
                     });
-                    
-                    await LoadKitaplarAsync();
 
-                    string sonucMesaji = $"{eklenen} kitap başarıyla eklendi.";
-                    if (hatali > 0)
+                    // API'ye toplu gönder
+                    if (kitaplarToAdd.Count > 0)
                     {
-                        sonucMesaji += $"\n\n⚠️ {hatali} kitap eklenemedi (Barkod hatası veya mükerrer).";
+                        var result = await ApiService.CreateKitaplarTopluAsync(kitaplarToAdd);
+                        
+                        if (result != null)
+                        {
+                            await LoadKitaplarAsync();
+
+                            string sonucMesaji = $"{result.Eklenen} kitap başarıyla eklendi.";
+                            if (result.Hatali > 0 || hatali > 0)
+                            {
+                                sonucMesaji += $"\n\n⚠️ {result.Hatali + hatali} kitap eklenemedi (Barkod hatası veya mükerrer).";
+                            }
+                            
+                            MessageBox.Show(sonucMesaji, "İçe Aktarma Sonucu", MessageBoxButton.OK, 
+                                (result.Hatali > 0 || hatali > 0) ? MessageBoxImage.Warning : MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("API ile bağlantı kurulamadı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                     }
-                    
-                    MessageBox.Show(sonucMesaji, "İçe Aktarma Sonucu", MessageBoxButton.OK, hatali > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+                    else
+                    {
+                        string mesaj = "Eklenecek geçerli kitap bulunamadı.";
+                        if (hatali > 0)
+                        {
+                            mesaj += $"\n\n⚠️ {hatali} satır geçersiz barkod nedeniyle atlandı.";
+                        }
+                        MessageBox.Show(mesaj, "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
                 }
             }
             catch (Exception ex)
@@ -571,30 +532,7 @@ namespace KutuphaneOtomasyon.Pages
                 MessageBox.Show($"İçe aktarma hatası: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-        private async Task<bool> IsBarcodeExistsAsync(NpgsqlConnection conn, string barcode)
-        {
-            await using var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM Kitaplar WHERE ISBN = @barcode", conn);
-            cmd.Parameters.AddWithValue("@barcode", barcode);
-            return Convert.ToInt32(await cmd.ExecuteScalarAsync()) > 0;
-        }
         
-        private async Task InsertKitapAsync(NpgsqlConnection conn, string baslik, string yazar, int yil, int stok, string barkod, string rafNo, string siraNo)
-        {
-            await using var cmd = new NpgsqlCommand(@"
-                INSERT INTO Kitaplar (Baslik, Yazar, YayinYili, StokAdedi, MevcutAdet, ISBN, TurID, RafNo, SiraNo)
-                VALUES (@baslik, @yazar, @yil, @stok, @stok, @isbn, 1, @raf, @sira)", conn); 
-            
-            cmd.Parameters.AddWithValue("@baslik", baslik);
-            cmd.Parameters.AddWithValue("@yazar", yazar);
-            cmd.Parameters.AddWithValue("@yil", yil > 0 ? yil : DBNull.Value);
-            cmd.Parameters.AddWithValue("@stok", stok);
-            cmd.Parameters.AddWithValue("@isbn", barkod);
-            cmd.Parameters.AddWithValue("@raf", string.IsNullOrEmpty(rafNo) ? DBNull.Value : rafNo);
-            cmd.Parameters.AddWithValue("@sira", string.IsNullOrEmpty(siraNo) ? DBNull.Value : siraNo);
-            
-            await cmd.ExecuteNonQueryAsync();
-        }
         
         private async void ExcelExport_Click(object sender, RoutedEventArgs e)
         {
@@ -661,7 +599,7 @@ namespace KutuphaneOtomasyon.Pages
         
         private void Filter_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (IsLoaded) _ = LoadKitaplarAsync(txtSearch?.Text?.Trim() ?? "");
+            if (IsLoaded && !_isInitializing) _ = LoadKitaplarAsync(txtSearch?.Text?.Trim() ?? "");
         }
     }
 

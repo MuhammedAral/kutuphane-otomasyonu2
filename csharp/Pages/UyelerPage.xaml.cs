@@ -1,8 +1,6 @@
-using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.ComponentModel;
 using System.Windows.Data;
 
@@ -13,42 +11,39 @@ namespace KutuphaneOtomasyon.Pages
         public UyelerPage()
         {
             InitializeComponent();
-            Loaded += (s, e) => LoadUyeler();
+            Loaded += async (s, e) => await LoadUyelerAsync();
         }
         
-        private void LoadUyeler(string search = "")
+        private async Task LoadUyelerAsync(string search = "")
         {
             try
             {
-                using var conn = DatabaseHelper.GetConnection();
-                conn.Open();
+                string? rol = null;
+                if (cmbRol?.SelectedIndex == 1)
+                    rol = "Uye";
+                else if (cmbRol?.SelectedIndex == 2)
+                    rol = "Yonetici";
                 
-                var query = @"SELECT KullaniciID, KullaniciAdi, AdSoyad, 
-                              ISNULL(Email, '-') as Email, ISNULL(Telefon, '-') as Telefon, Rol 
-                              FROM Kullanicilar WHERE 1=1";
+                var uyeler = await ApiService.GetUyelerAsync(search, rol);
                 
-                // Arama filtresi
-                if (!string.IsNullOrEmpty(search))
-                    query += " AND (AdSoyad LIKE @search OR KullaniciAdi LIKE @search OR Email LIKE @search)";
-                
-                // Rol filtresi
-                if (cmbRol?.SelectedIndex == 1) // Üyeler
-                    query += " AND Rol = 'Uye'";
-                else if (cmbRol?.SelectedIndex == 2) // Yöneticiler
-                    query += " AND Rol = 'Yonetici'";
-                
-                query += " ORDER BY KullaniciID DESC";
-                
-                var cmd = new SqlCommand(query, conn);
-                if (!string.IsNullOrEmpty(search))
-                    cmd.Parameters.AddWithValue("@search", $"%{search}%");
-                
-                var adapter = new SqlDataAdapter(cmd);
-                var dt = new DataTable();
-                adapter.Fill(dt);
-                dgUyeler.ItemsSource = dt.DefaultView;
-                
-                txtSonuc.Text = $"{dt.Rows.Count} üye bulundu";
+                if (uyeler != null)
+                {
+                    var dt = new DataTable();
+                    dt.Columns.Add("KullaniciID", typeof(int));
+                    dt.Columns.Add("KullaniciAdi", typeof(string));
+                    dt.Columns.Add("AdSoyad", typeof(string));
+                    dt.Columns.Add("Email", typeof(string));
+                    dt.Columns.Add("Telefon", typeof(string));
+                    dt.Columns.Add("Rol", typeof(string));
+                    
+                    foreach (var u in uyeler)
+                    {
+                        dt.Rows.Add(u.KullaniciID, u.KullaniciAdi, u.AdSoyad, u.Email ?? "-", u.Telefon ?? "-", u.Rol);
+                    }
+                    
+                    dgUyeler.ItemsSource = dt.DefaultView;
+                    txtSonuc.Text = $"{dt.Rows.Count} üye bulundu";
+                }
             }
             catch (Exception ex)
             {
@@ -56,46 +51,40 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        private void Filter_Changed(object sender, SelectionChangedEventArgs e)
+        private async void Filter_Changed(object sender, SelectionChangedEventArgs e)
         {
-            if (IsLoaded) LoadUyeler(txtSearch?.Text?.Trim() ?? "");
+            if (IsLoaded) await LoadUyelerAsync(txtSearch?.Text?.Trim() ?? "");
         }
 
         private void DataGrid_Sorting(object sender, DataGridSortingEventArgs e)
         {
-            // Özel sıralama mantığı
             if (e.Column.Header.ToString() == "Ad Soyad")
             {
-                e.Handled = true; // Varsayılan sıralamayı iptal et
+                e.Handled = true;
                 
                 var view = CollectionViewSource.GetDefaultView(dgUyeler.ItemsSource);
                 if (view == null) return;
 
                 var direction = ListSortDirection.Ascending;
                 
-                // Mevcut sıralama yönünü kontrol et ve tersine çevir
                 if (e.Column.SortDirection == ListSortDirection.Ascending)
-                {
                     direction = ListSortDirection.Descending;
-                }
                 
-                // Sıralama yönünü güncelle (UI için)
                 e.Column.SortDirection = direction;
                 
-                // Sıralamayı uygula: Önce Ad Soyad, Sonra Kullanıcı Adı
                 view.SortDescriptions.Clear();
                 view.SortDescriptions.Add(new SortDescription("AdSoyad", direction));
                 view.SortDescriptions.Add(new SortDescription("KullaniciAdi", ListSortDirection.Ascending)); 
             }
         }
         
-        private void YeniUye_Click(object sender, RoutedEventArgs e)
+        private async void YeniUye_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 var dialog = new UyeDialog();
                 if (dialog.ShowDialog() == true)
-                    LoadUyeler();
+                    await LoadUyelerAsync();
             }
             catch (Exception ex)
             {
@@ -103,7 +92,7 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
         
-        private void Sil_Click(object sender, RoutedEventArgs e)
+        private async void Sil_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -118,13 +107,18 @@ namespace KutuphaneOtomasyon.Pages
                     if (MessageBox.Show($"'{row["AdSoyad"]}' üyesini silmek istiyor musunuz?", "Silme Onayı",
                         MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                     {
-                        using var conn = DatabaseHelper.GetConnection();
-                        conn.Open();
-                        using var cmd = new SqlCommand("DELETE FROM Kullanicilar WHERE KullaniciID = @id", conn);
-                        cmd.Parameters.AddWithValue("@id", row["KullaniciID"]);
-                        cmd.ExecuteNonQuery();
-                        LoadUyeler();
-                        MessageBox.Show("Üye silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                        var id = Convert.ToInt32(row["KullaniciID"]);
+                        var result = await ApiService.DeleteUyeAsync(id);
+                        
+                        if (result != null && result.Success)
+                        {
+                            await LoadUyelerAsync();
+                            MessageBox.Show("Üye silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show(result?.Mesaj ?? "Silme başarısız!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                     }
                 }
             }
@@ -134,6 +128,6 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
 
-        private void Search_TextChanged(object sender, TextChangedEventArgs e) => LoadUyeler(txtSearch.Text.Trim());
+        private async void Search_TextChanged(object sender, TextChangedEventArgs e) => await LoadUyelerAsync(txtSearch.Text.Trim());
     }
 }
