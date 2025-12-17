@@ -84,7 +84,7 @@ app.UseCors("AllowAll");
 app.UseAuthentication(); // Kimlik Doğrulama (Önce bu)
 app.UseAuthorization();  // Yetkilendirme (Sonra bu)
 
-// Static files - website klasöründen
+// Static files - website klasöründen (UTF-8 charset ile)
 var websitePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "website");
 if (Directory.Exists(websitePath))
 {
@@ -95,7 +95,23 @@ if (Directory.Exists(websitePath))
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(websitePath),
-        RequestPath = ""
+        RequestPath = "",
+        OnPrepareResponse = ctx =>
+        {
+            // HTML dosyaları için UTF-8 charset ekle
+            if (ctx.File.Name.EndsWith(".html"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "text/html; charset=utf-8");
+            }
+            else if (ctx.File.Name.EndsWith(".js"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "application/javascript; charset=utf-8");
+            }
+            else if (ctx.File.Name.EndsWith(".css"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "text/css; charset=utf-8");
+            }
+        }
     });
 }
 
@@ -267,10 +283,11 @@ using (var scope = app.Services.CreateScope())
         }
         else
         {
-            // Mevcut admin şifresini güncelle (hash uyumu için)
-            var updateAdminPass = new NpgsqlCommand(@"UPDATE Kullanicilar SET Sifre = @sifre WHERE KullaniciAdi = 'admin'", conn);
-            updateAdminPass.Parameters.AddWithValue("@sifre", HashPassword("admin123"));
-            updateAdminPass.ExecuteNonQuery();
+            // Mevcut admin şifresini ve adını güncelle (encoding uyumu için)
+            var updateAdmin = new NpgsqlCommand(@"UPDATE Kullanicilar SET Sifre = @sifre, AdSoyad = @ad WHERE KullaniciAdi = 'admin'", conn);
+            updateAdmin.Parameters.AddWithValue("@sifre", HashPassword("admin123"));
+            updateAdmin.Parameters.AddWithValue("@ad", "Sistem Yöneticisi");
+            updateAdmin.ExecuteNonQuery();
         }
         
         // Varsayılan kitap türleri
@@ -353,6 +370,20 @@ app.MapPost("/api/fix-yazar-temizle", () =>
     return Results.Ok(new { Success = true, Mesaj = $"{affected} kitapta yazar temizlendi" });
 })
 .WithName("FixYazarTemizle")
+.WithTags("Yönetim")
+.AllowAnonymous();
+
+// Admin kullanıcı adını düzelt (encoding sorunu için)
+app.MapPost("/api/fix-admin-name", () =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    var cmd = new NpgsqlCommand(@"UPDATE Kullanicilar SET AdSoyad = 'Sistem Yoneticisi' WHERE KullaniciAdi = 'admin'", conn);
+    var affected = cmd.ExecuteNonQuery();
+    return Results.Ok(new { Success = true, Mesaj = $"Admin adı düzeltildi" });
+})
+.WithName("FixAdminName")
 .WithTags("Yönetim")
 .AllowAnonymous();
 
@@ -1208,6 +1239,137 @@ app.MapGet("/api/turler", () =>
 .WithTags("Kitap Türleri")
 .RequireAuthorization();
 
+// ==================== DEĞERLENDİRMELER API ====================
+
+// Kitaba ait değerlendirmeleri getir
+app.MapGet("/api/kitaplar/{kitapId}/degerlendirmeler", (int kitapId) =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    var degerlendirmeler = new List<object>();
+    
+    var cmd = new NpgsqlCommand(@"
+        SELECT d.DegerlendirmeID, d.Puan, d.Yorum, d.Tarih, k.AdSoyad, d.UyeID
+        FROM Degerlendirmeler d
+        JOIN Kullanicilar k ON d.UyeID = k.KullaniciID
+        WHERE d.KitapID = @kitapId
+        ORDER BY d.Tarih DESC", conn);
+    cmd.Parameters.AddWithValue("@kitapId", kitapId);
+    
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
+    {
+        degerlendirmeler.Add(new
+        {
+            DegerlendirmeID = reader.GetInt32(0),
+            Puan = reader.GetInt16(1),
+            Yorum = reader.IsDBNull(2) ? "" : reader.GetString(2),
+            Tarih = reader.GetDateTime(3),
+            AdSoyad = reader.GetString(4),
+            UyeID = reader.GetInt32(5)
+        });
+    }
+    
+    return Results.Ok(degerlendirmeler);
+})
+.WithName("GetKitapDegerlendirmeler")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
+
+// Kitabın ortalama puanını getir
+app.MapGet("/api/kitaplar/{kitapId}/puan", (int kitapId) =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    var cmd = new NpgsqlCommand(@"
+        SELECT COUNT(*), COALESCE(AVG(CAST(Puan AS FLOAT)), 0)
+        FROM Degerlendirmeler WHERE KitapID = @kitapId", conn);
+    cmd.Parameters.AddWithValue("@kitapId", kitapId);
+    
+    using var reader = cmd.ExecuteReader();
+    if (reader.Read())
+    {
+        return Results.Ok(new
+        {
+            DegerlendirmeSayisi = reader.GetInt64(0),
+            OrtalamaPuan = reader.GetDouble(1)
+        });
+    }
+    
+    return Results.Ok(new { DegerlendirmeSayisi = 0, OrtalamaPuan = 0.0 });
+})
+.WithName("GetKitapPuan")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
+
+// Yeni değerlendirme ekle
+app.MapPost("/api/degerlendirmeler", (DegerlendirmeRequest request) =>
+{
+    if (request.Puan < 1 || request.Puan > 5)
+        return Results.BadRequest("Puan 1-5 arasında olmalıdır.");
+    
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    var cmd = new NpgsqlCommand(@"
+        INSERT INTO Degerlendirmeler (KitapID, UyeID, Puan, Yorum, Tarih)
+        VALUES (@kitapId, @uyeId, @puan, @yorum, NOW())
+        RETURNING DegerlendirmeID", conn);
+    
+    cmd.Parameters.AddWithValue("@kitapId", request.KitapID);
+    cmd.Parameters.AddWithValue("@uyeId", request.UyeID);
+    cmd.Parameters.AddWithValue("@puan", (short)request.Puan);
+    cmd.Parameters.AddWithValue("@yorum", string.IsNullOrEmpty(request.Yorum) ? DBNull.Value : request.Yorum);
+    
+    var id = cmd.ExecuteScalar();
+    
+    return Results.Created($"/api/degerlendirmeler/{id}", new { Success = true, DegerlendirmeID = id, Mesaj = "Değerlendirme kaydedildi" });
+})
+.WithName("CreateDegerlendirme")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
+
+// Değerlendirme sil (kullanıcı kendi yorumunu veya admin herkesinkini silebilir)
+app.MapDelete("/api/degerlendirmeler/{id}", (int id, HttpContext context) =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    // Kullanıcı bilgilerini al
+    var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+    var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role);
+    
+    if (userIdClaim == null)
+        return Results.Unauthorized();
+    
+    var userId = int.Parse(userIdClaim.Value);
+    var isAdmin = roleClaim?.Value == "Yonetici";
+    
+    // Değerlendirmenin sahibini kontrol et
+    var checkCmd = new NpgsqlCommand("SELECT UyeID FROM Degerlendirmeler WHERE DegerlendirmeID = @id", conn);
+    checkCmd.Parameters.AddWithValue("@id", id);
+    var ownerId = checkCmd.ExecuteScalar();
+    
+    if (ownerId == null)
+        return Results.NotFound(new { Success = false, Mesaj = "Değerlendirme bulunamadı" });
+    
+    // Yetki kontrolü: Kendi yorumu mu veya admin mi?
+    if (!isAdmin && (int)ownerId != userId)
+        return Results.Forbid();
+    
+    // Sil
+    var deleteCmd = new NpgsqlCommand("DELETE FROM Degerlendirmeler WHERE DegerlendirmeID = @id", conn);
+    deleteCmd.Parameters.AddWithValue("@id", id);
+    deleteCmd.ExecuteNonQuery();
+    
+    return Results.Ok(new { Success = true, Mesaj = "Değerlendirme silindi" });
+})
+.WithName("DeleteDegerlendirme")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
+
 // ==================== İSTATİSTİKLER API ====================
 
 app.MapGet("/api/istatistikler", () =>
@@ -1740,3 +1902,4 @@ public record RegisterRequest(string KullaniciAdi, string Sifre, string AdSoyad,
 public record VerifyRequest(int UserId, string Kod);
 public record UyeRequest(string KullaniciAdi, string Sifre, string AdSoyad, string? Email, string? Telefon);
 public record ProfilUpdateRequest(string AdSoyad, string KullaniciAdi, string? Email, string? Telefon, string MevcutSifre, string? YeniSifre);
+public record DegerlendirmeRequest(int KitapID, int UyeID, int Puan, string? Yorum);

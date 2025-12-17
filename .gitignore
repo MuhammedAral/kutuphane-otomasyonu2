@@ -40,4 +40,4 @@ packages/
 
 # Gizli dosyalar
 .env
-appsettings.Development.json
+appsettings.Development.json*_wpftmp.csproj
