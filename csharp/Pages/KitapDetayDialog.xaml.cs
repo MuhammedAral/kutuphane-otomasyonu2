@@ -61,9 +61,21 @@ namespace KutuphaneOtomasyon.Pages
                     ORDER BY d.Tarih DESC", conn);
                 cmdYorumlar.Parameters.AddWithValue("@id", _kitapId);
                 
-                var dt = new DataTable();
-                new NpgsqlDataAdapter(cmdYorumlar).Fill(dt);
-                lstYorumlar.ItemsSource = dt.DefaultView;
+                var yorumlar = new List<YorumItem>();
+                using (var reader = cmdYorumlar.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        yorumlar.Add(new YorumItem
+                        {
+                            Puan = reader.GetInt32(0),
+                            Yorum = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                            Tarih = reader.GetDateTime(2),
+                            AdSoyad = reader.GetString(3)
+                        });
+                    }
+                }
+                lstYorumlar.ItemsSource = yorumlar;
 
                 // 3. Ortalama Puanı Getir
                 using var cmdAvg = new NpgsqlCommand("SELECT COUNT(*), AVG(CAST(Puan AS FLOAT)) FROM Degerlendirmeler WHERE KitapID = @id", conn);
@@ -144,5 +156,12 @@ namespace KutuphaneOtomasyon.Pages
             }
         }
     }
+    
+    public class YorumItem
+    {
+        public int Puan { get; set; }
+        public string Yorum { get; set; } = "";
+        public DateTime Tarih { get; set; }
+        public string AdSoyad { get; set; } = "";
+    }
 }
-
