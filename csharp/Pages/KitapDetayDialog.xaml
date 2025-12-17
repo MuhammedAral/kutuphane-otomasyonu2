@@ -58,11 +58,24 @@
                         <Border Background="#252536" CornerRadius="10" Padding="15" Margin="0,0,0,15" Width="700">
                             <StackPanel>
                                 <Grid Margin="0,0,0,8">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock Text="👤" Foreground="#8b5cf6" Margin="0,0,8,0" FontSize="16"/>
                                         <TextBlock Text="{Binding AdSoyad}" FontWeight="Bold" Foreground="White" FontSize="14" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Tarih, StringFormat=dd.MM.yyyy}" Foreground="#6b7280" HorizontalAlignment="Right" FontSize="12" VerticalAlignment="Center"/>
+                                    
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                        <TextBlock Text="{Binding Tarih, StringFormat=dd.MM.yyyy}" Foreground="#6b7280" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        
+                                        <Button Content="Sil" Click="YorumSil_Click" Visibility="{Binding IsDeleteVisible}"
+                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                Foreground="#ef4444" Padding="4,0" Height="24" FontSize="11"
+                                                VerticalAlignment="Center"/>
+                                    </StackPanel>
                                 </Grid>
                                 
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">

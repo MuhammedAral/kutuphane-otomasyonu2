@@ -1,6 +1,8 @@
 ﻿using Npgsql;
 using System.Data;
 using System.Windows;
+using System.Windows.Controls;
+using KutuphaneOtomasyon;
 using KutuphaneOtomasyon.Pages;
 
 namespace KutuphaneOtomasyon.Pages
@@ -53,8 +55,9 @@ namespace KutuphaneOtomasyon.Pages
                 }
 
                 // 2. Yorumları Getir
+                // 2. Yorumları Getir
                 using var cmdYorumlar = new NpgsqlCommand(@"
-                    SELECT d.Puan, d.Yorum, d.Tarih, k.AdSoyad 
+                    SELECT d.DegerlendirmeID, d.UyeID, d.Puan, d.Yorum, d.Tarih, k.AdSoyad 
                     FROM Degerlendirmeler d 
                     JOIN Kullanicilar k ON d.UyeID = k.KullaniciID 
                     WHERE d.KitapID = @id 
@@ -66,12 +69,24 @@ namespace KutuphaneOtomasyon.Pages
                 {
                     while (reader.Read())
                     {
+                        int degerlendirmeId = reader.GetInt32(0);
+                        int uyeId = reader.GetInt32(1);
+                        int currentUser = CurrentSession.UserId ?? 0;
+                        string role = CurrentSession.Rol ?? "";
+                        
+                        // Admin veya kendi yorumu ise silme butonu görünsün
+                        var isVisible = (role == "Yonetici" || currentUser == uyeId) 
+                            ? Visibility.Visible : Visibility.Collapsed;
+
                         yorumlar.Add(new YorumItem
                         {
-                            Puan = reader.GetInt32(0),
-                            Yorum = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                            Tarih = reader.GetDateTime(2),
-                            AdSoyad = reader.GetString(3)
+                            DegerlendirmeID = degerlendirmeId,
+                            UyeID = uyeId,
+                            Puan = reader.GetInt32(2),
+                            Yorum = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            Tarih = reader.GetDateTime(4),
+                            AdSoyad = reader.GetString(5),
+                            IsDeleteVisible = isVisible
                         });
                     }
                 }
@@ -155,13 +170,47 @@ namespace KutuphaneOtomasyon.Pages
                 MessageBox.Show($"Kaydedilemedi: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private async void YorumSil_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is YorumItem item)
+            {
+                if (MessageBox.Show("Yorumu silmek istediğinize emin misiniz?", "Silme Onayı", 
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    return;
+                
+                try
+                {
+                    var result = await ApiService.DeleteDegerlendirmeAsync(item.DegerlendirmeID);
+                    if (result != null && result.Success)
+                    {
+                        MessageBox.Show("Yorum silindi!", "Başarılı", MessageBoxButton.OK, MessageBoxImage.Information);
+                        LoadKitapDetay();
+                    }
+                    else
+                    {
+                        // API entegrasyonu yoksa veya hata verdiyse SQL ile deneyelim (yedek plan)
+                        // Uyumluluk için doğrudan SQL ile silmeyi de buraya ekleyebilirim ama
+                        // API servisine güvendiğimiz için şimdilik sadece hata mesajı verelim.
+                        MessageBox.Show(result?.Mesaj ?? "Silme işlemi başarısız! (Yetki hatası olabilir)", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Hata: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
     }
     
     public class YorumItem
     {
+        public int DegerlendirmeID { get; set; }
+        public int UyeID { get; set; }
         public int Puan { get; set; }
         public string Yorum { get; set; } = "";
         public DateTime Tarih { get; set; }
         public string AdSoyad { get; set; } = "";
+        public Visibility IsDeleteVisible { get; set; } = Visibility.Collapsed;
     }
 }

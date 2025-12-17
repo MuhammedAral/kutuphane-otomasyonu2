@@ -30,8 +30,8 @@ namespace KutuphaneOtomasyon.Pages
                 if (kitaplar != null)
                 {
                     _kitaplar = new DataTable();
-                    _kitaplar.Columns.Add("kitapid", typeof(int));
-                    _kitaplar.Columns.Add("baslik", typeof(string));
+                    _kitaplar.Columns.Add("KitapID", typeof(int));
+                    _kitaplar.Columns.Add("Baslik", typeof(string));
                     
                     foreach (var k in kitaplar)
                     {
@@ -48,8 +48,8 @@ namespace KutuphaneOtomasyon.Pages
                 if (uyeler != null)
                 {
                     _uyeler = new DataTable();
-                    _uyeler.Columns.Add("kullaniciid", typeof(int));
-                    _uyeler.Columns.Add("adsoyad", typeof(string));
+                    _uyeler.Columns.Add("KullaniciID", typeof(int));
+                    _uyeler.Columns.Add("AdSoyad", typeof(string));
                     
                     foreach (var u in uyeler)
                     {
@@ -70,7 +70,7 @@ namespace KutuphaneOtomasyon.Pages
             if (string.IsNullOrEmpty(search))
                 _kitaplar.DefaultView.RowFilter = "";
             else
-                _kitaplar.DefaultView.RowFilter = $"baslik LIKE '%{search}%'";
+                _kitaplar.DefaultView.RowFilter = $"Baslik LIKE '%{search}%'";
         }
         
         private void UyeAra_TextChanged(object sender, TextChangedEventArgs e)
@@ -79,15 +79,15 @@ namespace KutuphaneOtomasyon.Pages
             if (string.IsNullOrEmpty(search))
                 _uyeler.DefaultView.RowFilter = "";
             else
-                _uyeler.DefaultView.RowFilter = $"adsoyad LIKE '%{search}%'";
+                _uyeler.DefaultView.RowFilter = $"AdSoyad LIKE '%{search}%'";
         }
         
         private void Kitap_Selected(object sender, SelectionChangedEventArgs e)
         {
             if (lstKitaplar.SelectedItem is DataRowView row)
             {
-                _selectedKitapId = Convert.ToInt32(row["kitapid"]);
-                txtKitapAra.Text = row["baslik"].ToString();
+                _selectedKitapId = Convert.ToInt32(row["KitapID"]);
+                txtKitapAra.Text = row["Baslik"].ToString();
             }
         }
         
@@ -95,8 +95,8 @@ namespace KutuphaneOtomasyon.Pages
         {
             if (lstUyeler.SelectedItem is DataRowView row)
             {
-                _selectedUyeId = Convert.ToInt32(row["kullaniciid"]);
-                txtUyeAra.Text = row["adsoyad"].ToString();
+                _selectedUyeId = Convert.ToInt32(row["KullaniciID"]);
+                txtUyeAra.Text = row["AdSoyad"].ToString();
             }
         }
         

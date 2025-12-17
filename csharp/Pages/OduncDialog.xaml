@@ -40,7 +40,7 @@
                      SelectionChanged="Kitap_Selected">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding baslik}" Foreground="#FFFFFF" FontSize="13" Padding="4,2"/>
+                        <TextBlock Text="{Binding Baslik}" Foreground="#FFFFFF" FontSize="13" Padding="4,2"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
                 <ListBox.ItemContainerStyle>
@@ -66,7 +66,7 @@
                      SelectionChanged="Uye_Selected">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding adsoyad}" Foreground="#FFFFFF" FontSize="13" Padding="4,2"/>
+                        <TextBlock Text="{Binding AdSoyad}" Foreground="#FFFFFF" FontSize="13" Padding="4,2"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
                 <ListBox.ItemContainerStyle>

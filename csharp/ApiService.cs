@@ -347,6 +347,18 @@ namespace KutuphaneOtomasyon
             }
             catch { return null; }
         }
+
+        // ==================== DEĞERLENDİRMELER ====================
+        
+        public static async Task<ApiResponse?> DeleteDegerlendirmeAsync(int id)
+        {
+            try
+            {
+                var response = await _httpClient.DeleteAsync($"{_baseUrl}/api/degerlendirmeler/{id}");
+                return await response.Content.ReadFromJsonAsync<ApiResponse>();
+            }
+            catch { return null; }
+        }
         
         // ==================== RAPORLAR ====================
         

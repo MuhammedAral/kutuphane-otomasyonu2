@@ -1673,6 +1673,59 @@ app.MapGet("/api/raporlar", () =>
 .WithTags("Raporlar")
 .RequireAuthorization();
 
+// ==================== DEĞERLENDİRME API ====================
+
+app.MapPost("/api/degerlendirmeler", (HttpContext context) =>
+{
+    // Bu endpoint zaten C# client tarafında direkt SQL ile yapılıyor ama
+    // API standardizasyonu için buraya eklenebilir. 
+    // Şimdilik C# tarafındaki yapıya dokunmayıp sadece SİLME işlemini ekliyoruz.
+    return Results.Ok();
+})
+.WithName("CreateDegerlendirme")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
+
+app.MapDelete("/api/degerlendirmeler/{id}", (int id, HttpContext context) =>
+{
+    var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
+    var roleClaim = context.User.FindFirst(ClaimTypes.Role);
+    
+    if (userIdClaim == null) return Results.Unauthorized();
+    
+    int userId = int.Parse(userIdClaim.Value);
+    string userRole = roleClaim?.Value ?? "Uye";
+    
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    // Yorumun kime ait olduğunu bul
+    var cmdCheck = new NpgsqlCommand("SELECT UyeID FROM Degerlendirmeler WHERE DegerlendirmeID = @id", conn);
+    cmdCheck.Parameters.AddWithValue("@id", id);
+    var ownerIdObj = cmdCheck.ExecuteScalar();
+    
+    if (ownerIdObj == null || ownerIdObj == DBNull.Value)
+        return Results.NotFound(new { Success = false, Mesaj = "Yorum bulunamadı." });
+        
+    int ownerId = Convert.ToInt32(ownerIdObj);
+    
+    // YETKİ KONTROLÜ: Admin değilse ve Kendi yorumu değilse -> HATA
+    if (userRole != "Yonetici" && userId != ownerId)
+    {
+        return Results.Forbid();
+    }
+    
+    // Silme işlemi
+    var cmdDelete = new NpgsqlCommand("DELETE FROM Degerlendirmeler WHERE DegerlendirmeID = @id", conn);
+    cmdDelete.Parameters.AddWithValue("@id", id);
+    cmdDelete.ExecuteNonQuery();
+    
+    return Results.Ok(new { Success = true, Mesaj = "Yorum başarıyla silindi." });
+})
+.WithName("DeleteDegerlendirme")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
+
 app.Run();
 
 // ==================== REQUEST MODELS ====================
