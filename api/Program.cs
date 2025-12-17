@@ -99,8 +99,9 @@ if (Directory.Exists(websitePath))
     });
 }
 
-// Database connection string - SUPABASE PostgreSQL
-var connectionString = "Host=db.cajuuwmwldceggretuyq.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=201005Ma.-;SSL Mode=Require;Trust Server Certificate=true";
+// Database connection string - SUPABASE PostgreSQL (Transaction Pooler - IPv4 Compatible)
+// No Reset On Close=true is required for Transaction Pooler (doesn't support PREPARE statements)
+var connectionString = "Host=aws-1-eu-central-1.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.cajuuwmwldceggretuyq;Password=201005Ma.-;SSL Mode=Require;Trust Server Certificate=true;Multiplexing=false;No Reset On Close=true;Command Timeout=60";
 
 // Yardımcı Metot: Şifre Hashleme
 string HashPassword(string password)

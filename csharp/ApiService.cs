@@ -8,13 +8,19 @@ namespace KutuphaneOtomasyon
 {
     public class ApiService
     {
-        private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient;
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions 
         { 
             PropertyNameCaseInsensitive = true 
         };
         private static string _baseUrl = "http://localhost:5026";
         private static string? _token;
+        
+        static ApiService()
+        {
+            _httpClient = new HttpClient();
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        }
         
         public static string BaseUrl
         {
@@ -55,9 +61,8 @@ namespace KutuphaneOtomasyon
                 }
                 return null;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Login error: {ex.Message}");
                 return null;
             }
         }

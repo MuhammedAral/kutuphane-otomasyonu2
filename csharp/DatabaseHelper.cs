@@ -6,10 +6,12 @@ namespace KutuphaneOtomasyon
 {
     public static class DatabaseHelper
     {
-        // Supabase PostgreSQL Connection String - Pooling ile optimize edilmiş
+        // Supabase PostgreSQL Connection String - Transaction Pooler (IPv4 Compatible)
+        // No Reset On Close=true is required for Transaction Pooler (doesn't support PREPARE statements)
         private static readonly string ConnectionString = 
-            "Host=db.cajuuwmwldceggretuyq.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=201005Ma.-;" +
-            "SSL Mode=Require;Trust Server Certificate=true;" +
+            "Host=aws-1-eu-central-1.pooler.supabase.com;Port=6543;" +
+            "Database=postgres;Username=postgres.cajuuwmwldceggretuyq;Password=201005Ma.-;" +
+            "SSL Mode=Require;Trust Server Certificate=true;Multiplexing=false;No Reset On Close=true;" +
             "Pooling=true;Minimum Pool Size=2;Maximum Pool Size=20;Connection Idle Lifetime=300;Connection Pruning Interval=10";
         
         public static NpgsqlConnection GetConnection() => new(ConnectionString);

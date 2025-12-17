@@ -19,17 +19,9 @@ namespace KutuphaneOtomasyon
                 args.Handled = true;
             };
             
-            // Veritabanını başlat
-            try
-            {
-                DatabaseHelper.Initialize();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Veritabanı bağlantısı başarısız!\n\n{ex.Message}\n\nDocker container'ın çalıştığından emin olun.", 
-                    "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
-                Shutdown();
-            }
+            
+            // Not: Veritabanı tabloları API tarafından oluşturulur
+            // DatabaseHelper sadece API çalışmadığında doğrudan erişim için kullanılır
         }
     }
 }
