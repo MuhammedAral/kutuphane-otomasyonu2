@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: kutuphane-api
+    env: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    plan: free
+    healthCheckPath: /swagger
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
