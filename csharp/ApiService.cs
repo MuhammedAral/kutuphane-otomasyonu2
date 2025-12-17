@@ -296,12 +296,12 @@ namespace KutuphaneOtomasyon
             catch { return null; }
         }
         
-        public static async Task<ApiResponse?> CreateOduncAsync(int kitapId, int uyeId)
+        public static async Task<ApiResponse?> CreateOduncAsync(int kitapId, int uyeId, int oduncGunu = 14)
         {
             try
             {
                 var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/api/odunc", 
-                    new { KitapID = kitapId, UyeID = uyeId });
+                    new { KitapID = kitapId, UyeID = uyeId, OduncGunu = oduncGunu });
                 return await response.Content.ReadFromJsonAsync<ApiResponse>();
             }
             catch { return null; }

@@ -118,9 +118,13 @@ namespace KutuphaneOtomasyon.Pages
                 return;
             }
             
+            // Double-click koruması
+            var btn = sender as Button;
+            if (btn != null) btn.IsEnabled = false;
+            
             try
             {
-                var result = await ApiService.CreateOduncAsync(_selectedKitapId.Value, _selectedUyeId.Value);
+                var result = await ApiService.CreateOduncAsync(_selectedKitapId.Value, _selectedUyeId.Value, gun);
                 if (result != null && result.Success)
                 {
                     DialogResult = true;
@@ -129,11 +133,13 @@ namespace KutuphaneOtomasyon.Pages
                 else
                 {
                     MessageBox.Show(result?.Mesaj ?? "Ödünç oluşturulamadı!", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    if (btn != null) btn.IsEnabled = true;
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ödünç verilemedi: {ex.Message}", "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (btn != null) btn.IsEnabled = true;
             }
         }
         
