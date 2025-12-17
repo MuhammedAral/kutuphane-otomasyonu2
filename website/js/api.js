@@ -1,8 +1,8 @@
-// ============================================
+﻿// ============================================
 // KÜTÜPHANE WEB SİTESİ - API İSTEKLERİ
 // ============================================
 
-const API_BASE = '/api';
+const API_BASE = 'http://localhost:5000/api';
 
 // Token işlemleri
 const Auth = {
@@ -183,6 +183,36 @@ const api = {
             oduncteKitap: 0,
             gecikenKitap: 0
         };
+    },
+
+    // Değerlendirmeler
+    async getKitapDegerlendirmeleri(kitapId) {
+        return await this.request(`/kitaplar/${kitapId}/degerlendirmeler`) || [];
+    },
+
+    async getKitapPuan(kitapId) {
+        return await this.request(`/kitaplar/${kitapId}/puan`) || { degerlendirmeSayisi: 0, ortalamaPuan: 0 };
+    },
+
+    async degerlendirmeEkle(kitapId, puan, yorum) {
+        const user = Auth.getUser();
+        if (!user || !user.id) throw new Error('Giriş yapmalısınız');
+
+        return await this.request('/degerlendirmeler', {
+            method: 'POST',
+            body: JSON.stringify({
+                KitapID: kitapId,
+                UyeID: user.id,
+                Puan: puan,
+                Yorum: yorum
+            })
+        });
+    },
+
+    async degerlendirmeSil(id) {
+        return await this.request(`/degerlendirmeler/${id}`, {
+            method: 'DELETE'
+        });
     }
 };
 
@@ -240,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameEl = document.getElementById('user-name');
     const userAvatarEl = document.getElementById('user-avatar');
     const userRoleEl = document.getElementById('user-role');
+    const sidebarUsernameEl = document.getElementById('sidebar-username');
 
     const user = Auth.getUser();
 
@@ -253,6 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (userRoleEl && user) {
         userRoleEl.textContent = user.role === 'Yonetici' ? 'Yönetici' : 'Üye';
+    }
+
+    // Sidebar başlığında kullanıcı adını göster
+    if (sidebarUsernameEl && user) {
+        sidebarUsernameEl.textContent = user.name || 'Yönetim';
     }
 
     // Aktif sayfa işaretleme

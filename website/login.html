@@ -1,24 +1,28 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giriş - Kütüphane Sistemi</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="./css/styles.css">
 </head>
 
 <body>
     <div class="login-container">
         <div class="login-box">
+            <!-- Logo ve Başlık -->
             <div class="login-header">
-                <div class="logo">📚</div>
+                <div class="logo-wrapper">
+                    <div class="logo-icon">📚</div>
+                </div>
                 <h1>Kütüphane Sistemi</h1>
                 <p>Lütfen giriş yapın</p>
             </div>
 
             <div id="error-message" class="error-message"></div>
 
+            <!-- Giriş Formu -->
             <form id="login-form">
                 <div class="form-group">
                     <label>Kullanıcı Adı</label>
@@ -38,28 +42,149 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-gradient btn-full" id="login-btn" style="margin-top: 10px;">
+                <div class="forgot-password-link">
+                    <a href="#" id="forgot-password-btn">Şifremi Unuttum?</a>
+                </div>
+
+                <button type="submit" class="btn btn-gradient btn-full" id="login-btn">
                     Giriş Yap
                 </button>
             </form>
 
             <div class="divider"></div>
 
-            <p class="register-link">
-                Hesabınız yok mu? <a href="#">Kayıt Ol</a>
-            </p>
+            <div class="register-section">
+                <span>Hesabınız yok mu?</span>
+                <button class="btn btn-gradient btn-register" id="register-btn">
+                    Hemen Kayıt Ol
+                </button>
+            </div>
         </div>
     </div>
 
-    <script src="/js/api.js"></script>
+    <!-- Kayıt Modal -->
+    <div class="modal-overlay" id="register-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>📝 Kayıt Ol</h2>
+                <button class="modal-close" onclick="closeModal('register-modal')">&times;</button>
+            </div>
+            <form id="register-form">
+                <div class="form-group">
+                    <label>Ad Soyad</label>
+                    <div class="input-wrapper">
+                        <span class="icon">👤</span>
+                        <input type="text" id="reg-name" placeholder="Ad Soyad" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>E-posta</label>
+                    <div class="input-wrapper">
+                        <span class="icon">📧</span>
+                        <input type="email" id="reg-email" placeholder="ornek@gmail.com" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Kullanıcı Adı</label>
+                    <div class="input-wrapper">
+                        <span class="icon">🆔</span>
+                        <input type="text" id="reg-username" placeholder="Kullanıcı adı" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Şifre (en az 6 karakter)</label>
+                    <div class="input-wrapper">
+                        <span class="icon">🔒</span>
+                        <input type="password" id="reg-password" placeholder="Şifre" required minlength="6">
+                    </div>
+                </div>
+                <div id="register-error" class="error-message"></div>
+                <div id="register-success" class="success-message"></div>
+                <button type="submit" class="btn btn-gradient btn-full" id="register-submit-btn">
+                    Kayıt Ol
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Şifremi Unuttum Modal -->
+    <div class="modal-overlay" id="forgot-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>🔑 Şifremi Unuttum</h2>
+                <button class="modal-close" onclick="closeModal('forgot-modal')">&times;</button>
+            </div>
+            <div id="forgot-step-1">
+                <p class="modal-desc">E-posta adresinizi girin, size doğrulama kodu göndereceğiz.</p>
+                <form id="forgot-form">
+                    <div class="form-group">
+                        <label>E-posta</label>
+                        <div class="input-wrapper">
+                            <span class="icon">📧</span>
+                            <input type="email" id="forgot-email" placeholder="E-posta adresiniz" required>
+                        </div>
+                    </div>
+                    <div id="forgot-error" class="error-message"></div>
+                    <button type="submit" class="btn btn-gradient btn-full">Kod Gönder</button>
+                </form>
+            </div>
+            <div id="forgot-step-2" style="display:none;">
+                <p class="modal-desc">E-postanıza gönderilen kodu ve yeni şifrenizi girin.</p>
+                <form id="reset-form">
+                    <div class="form-group">
+                        <label>Doğrulama Kodu</label>
+                        <div class="input-wrapper">
+                            <span class="icon">🔢</span>
+                            <input type="text" id="reset-code" placeholder="6 haneli kod" required maxlength="6">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Şifre</label>
+                        <div class="input-wrapper">
+                            <span class="icon">🔒</span>
+                            <input type="password" id="reset-password" placeholder="Yeni şifre" required minlength="6">
+                        </div>
+                    </div>
+                    <div id="reset-error" class="error-message"></div>
+                    <div id="reset-success" class="success-message"></div>
+                    <button type="submit" class="btn btn-gradient btn-full">Şifreyi Güncelle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- E-posta Doğrulama Modal -->
+    <div class="modal-overlay" id="verify-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>✉️ E-posta Doğrulama</h2>
+                <button class="modal-close" onclick="closeModal('verify-modal')">&times;</button>
+            </div>
+            <p class="modal-desc">E-postanıza gönderilen doğrulama kodunu girin.</p>
+            <form id="verify-form">
+                <div class="form-group">
+                    <label>Doğrulama Kodu</label>
+                    <div class="input-wrapper">
+                        <span class="icon">🔢</span>
+                        <input type="text" id="verify-code" placeholder="6 haneli kod" required maxlength="6">
+                    </div>
+                </div>
+                <div id="verify-error" class="error-message"></div>
+                <div id="verify-success" class="success-message"></div>
+                <button type="submit" class="btn btn-gradient btn-full">Doğrula</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="./js/api.js"></script>
     <script>
         // Zaten giriş yapılmışsa yönlendir
         if (Auth.isLoggedIn()) {
             const user = Auth.getUser();
             if (user.role === 'Yonetici') {
-                window.location.href = '/admin/index.html';
+                window.location.href = './admin/index.html';
             } else {
-                window.location.href = '/index.html';
+                window.location.href = './index.html';
             }
         }
 
@@ -67,14 +192,14 @@
         const errorEl = document.getElementById('error-message');
         const loginBtn = document.getElementById('login-btn');
 
+        // Giriş
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
             if (!username || !password) {
-                showError('Kullanıcı adı ve şifre gereklidir.');
+                showError(errorEl, 'Kullanıcı adı ve şifre gereklidir.');
                 return;
             }
 
@@ -84,26 +209,176 @@
 
             try {
                 const result = await api.login(username, password);
-
-                // Role göre yönlendir
                 if (result.user.role === 'Yonetici') {
-                    window.location.href = '/admin/index.html';
+                    window.location.href = './admin/index.html';
                 } else {
-                    window.location.href = '/index.html';
+                    window.location.href = './index.html';
                 }
-
             } catch (error) {
-                showError(error.message || 'Giriş başarısız');
+                showError(errorEl, error.message || 'Giriş başarısız');
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Giriş Yap';
             }
         });
 
-        function showError(message) {
-            errorEl.textContent = message;
-            errorEl.classList.add('show');
+        // Modal işlemleri
+        function openModal(id) {
+            document.getElementById(id).classList.add('show');
         }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+        function showError(el, msg) {
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+        function showSuccess(el, msg) {
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        // Kayıt ol butonu
+        document.getElementById('register-btn').addEventListener('click', () => {
+            openModal('register-modal');
+        });
+
+        // Şifremi unuttum
+        document.getElementById('forgot-password-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            openModal('forgot-modal');
+        });
+
+        // Kayıt formu
+        let registeredUserId = null;
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('register-error');
+            const successEl = document.getElementById('register-success');
+            errEl.classList.remove('show');
+            successEl.classList.remove('show');
+
+            const adSoyad = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const kullaniciAdi = document.getElementById('reg-username').value.trim();
+            const sifre = document.getElementById('reg-password').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ AdSoyad: adSoyad, Email: email, KullaniciAdi: kullaniciAdi, Sifre: sifre })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Kayıt başarısız');
+
+                registeredUserId = data.userId;
+                showSuccess(successEl, data.message);
+
+                setTimeout(() => {
+                    closeModal('register-modal');
+                    openModal('verify-modal');
+                }, 1500);
+            } catch (err) {
+                showError(errEl, err.message);
+            }
+        });
+
+        // E-posta doğrulama
+        document.getElementById('verify-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('verify-error');
+            const successEl = document.getElementById('verify-success');
+            errEl.classList.remove('show');
+            successEl.classList.remove('show');
+
+            const kod = document.getElementById('verify-code').value.trim();
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/verify-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ UserId: registeredUserId, Kod: kod })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Doğrulama başarısız');
+
+                showSuccess(successEl, data.message + ' Şimdi giriş yapabilirsiniz.');
+                setTimeout(() => {
+                    closeModal('verify-modal');
+                }, 2000);
+            } catch (err) {
+                showError(errEl, err.message);
+            }
+        });
+
+        // Şifremi unuttum form
+        let forgotEmail = '';
+        document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('forgot-error');
+            errEl.classList.remove('show');
+
+            forgotEmail = document.getElementById('forgot-email').value.trim();
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/sifremi-unuttum`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Email: forgotEmail })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'İşlem başarısız');
+
+                document.getElementById('forgot-step-1').style.display = 'none';
+                document.getElementById('forgot-step-2').style.display = 'block';
+            } catch (err) {
+                showError(errEl, err.message);
+            }
+        });
+
+        // Şifre sıfırlama
+        document.getElementById('reset-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('reset-error');
+            const successEl = document.getElementById('reset-success');
+            errEl.classList.remove('show');
+            successEl.classList.remove('show');
+
+            const kod = document.getElementById('reset-code').value.trim();
+            const yeniSifre = document.getElementById('reset-password').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/sifre-sifirla`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Email: forgotEmail, Kod: kod, YeniSifre: yeniSifre })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'İşlem başarısız');
+
+                showSuccess(successEl, data.message);
+                setTimeout(() => {
+                    closeModal('forgot-modal');
+                    document.getElementById('forgot-step-1').style.display = 'block';
+                    document.getElementById('forgot-step-2').style.display = 'none';
+                }, 2000);
+            } catch (err) {
+                showError(errEl, err.message);
+            }
+        });
+
+        // Modal dışına tıklayınca kapat
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
     </script>
 </body>
 
 </html>
+</CodeContent>
+<parameter name="Description">Login sayfasını masaüstü uygulamasına uygun hale getirdim: Kayıt ol, şifremi unuttum ve
+    e-posta doğrulama modalleri eklendi.

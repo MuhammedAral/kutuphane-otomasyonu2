@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kitaplar - Kütüphane Sistemi</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="./css/styles.css">
 </head>
 
 <body>
@@ -20,32 +20,28 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="/index.html" class="nav-item">
+                <a href="./index.html" class="nav-item">
                     <span class="icon">🏠</span>
                     <span>Ana Sayfa</span>
                 </a>
-                <a href="/kitaplar.html" class="nav-item">
+                <a href="./kitaplar.html" class="nav-item">
                     <span class="icon">📖</span>
                     <span>Kitaplar</span>
                 </a>
-                <a href="/odunclerim.html" class="nav-item">
+                <a href="./odunclerim.html" class="nav-item">
                     <span class="icon">📋</span>
                     <span>Ödünçlerim</span>
                 </a>
-                <a href="/profil.html" class="nav-item">
+                <a href="./profil.html" class="nav-item">
                     <span class="icon">👤</span>
                     <span>Profil</span>
                 </a>
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-card">
-                    <div class="user-avatar" id="user-avatar">?</div>
-                    <div class="user-info">
-                        <div class="user-name" id="user-name">Yükleniyor...</div>
-                        <div class="user-role" id="user-role">Üye</div>
-                    </div>
-                    <button class="logout-btn" onclick="Auth.logout()" title="Çıkış Yap">🚪</button>
+                <div class="logout-card" onclick="Auth.logout()">
+                    <span class="icon">🚪</span>
+                    <span>Çıkış Yap</span>
                 </div>
             </div>
         </aside>
@@ -57,37 +53,94 @@
                 <p>Kütüphanedeki tüm kitapları görüntüleyin ve arayın.</p>
             </div>
 
+            <!-- Filtre ve Arama -->
             <div class="table-card">
                 <div class="table-header">
-                    <h2>Kitap Listesi</h2>
-                    <div class="search-box">
-                        <span class="icon">🔍</span>
-                        <input type="text" id="search-input" placeholder="Kitap veya yazar ara...">
+                    <div class="filter-bar">
+                        <div class="search-box">
+                            <span class="icon">🔍</span>
+                            <input type="text" id="search-input" placeholder="Kitap veya yazar ara...">
+                        </div>
+                        <select id="tur-filter">
+                            <option value="">Tüm Türler</option>
+                        </select>
+                        <select id="stock-filter">
+                            <option value="">Tümü</option>
+                            <option value="available">Mevcut Olanlar</option>
+                            <option value="unavailable">Tükenenler</option>
+                        </select>
+                    </div>
+                    <div class="view-toggle">
+                        <button class="tab-btn active" id="view-table" title="Tablo Görünümü">📋</button>
+                        <button class="tab-btn" id="view-grid" title="Kart Görünümü">🗂️</button>
                     </div>
                 </div>
+
+                <!-- Tablo Görünümü -->
                 <div class="table-body" id="kitap-table">
                     <div class="loading">
                         <div class="spinner"></div>
                         <span>Yükleniyor...</span>
                     </div>
                 </div>
+
+                <!-- Kart Görünümü -->
+                <div class="book-grid" id="kitap-grid" style="display: none;"></div>
             </div>
+
+            <!-- Sayfa bilgisi -->
+            <div class="page-info" id="page-info"></div>
         </main>
     </div>
 
-    <script src="/js/api.js"></script>
+    <script src="./js/api.js"></script>
     <script>
         Auth.requireAuth();
 
         let allKitaplar = [];
+        let allTurler = [];
+        let currentView = 'table';
 
         document.addEventListener('DOMContentLoaded', async () => {
+            await loadTurler();
             await loadKitaplar();
 
-            document.getElementById('search-input').addEventListener('input', (e) => {
-                filterKitaplar(e.target.value);
-            });
+            // Arama
+            document.getElementById('search-input').addEventListener('input', debounce(applyFilters, 300));
+
+            // Tür filtresi
+            document.getElementById('tur-filter').addEventListener('change', applyFilters);
+
+            // Stok filtresi
+            document.getElementById('stock-filter').addEventListener('change', applyFilters);
+
+            // Görünüm değiştirme
+            document.getElementById('view-table').addEventListener('click', () => switchView('table'));
+            document.getElementById('view-grid').addEventListener('click', () => switchView('grid'));
         });
+
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        async function loadTurler() {
+            try {
+                allTurler = await api.getTurler();
+                const select = document.getElementById('tur-filter');
+                allTurler.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.turAdi; // TurAdi ile filtrele
+                    opt.textContent = t.turAdi;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Türler yüklenemedi:', e);
+            }
+        }
 
         async function loadKitaplar() {
             const container = document.getElementById('kitap-table');
@@ -100,62 +153,481 @@
             }
         }
 
-        function filterKitaplar(query) {
-            if (!query) {
-                renderKitaplar(allKitaplar);
-                return;
+        function applyFilters() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const turId = document.getElementById('tur-filter').value;
+            const stockFilter = document.getElementById('stock-filter').value;
+
+            let filtered = allKitaplar;
+
+            // Arama
+            if (query) {
+                filtered = filtered.filter(k =>
+                    (k.baslik || '').toLowerCase().includes(query) ||
+                    (k.yazar || '').toLowerCase().includes(query) ||
+                    (k.isbn || '').toLowerCase().includes(query)
+                );
             }
 
-            const q = query.toLowerCase();
-            const filtered = allKitaplar.filter(k =>
-                (k.baslik || '').toLowerCase().includes(q) ||
-                (k.yazar || '').toLowerCase().includes(q) ||
-                (k.turAdi || '').toLowerCase().includes(q)
-            );
+            // Tür filtresi (TurAdi ile)
+            if (turId) {
+                filtered = filtered.filter(k => k.turAdi == turId);
+            }
+
+            // Stok filtresi
+            if (stockFilter === 'available') {
+                filtered = filtered.filter(k => k.mevcutAdet > 0);
+            } else if (stockFilter === 'unavailable') {
+                filtered = filtered.filter(k => k.mevcutAdet === 0);
+            }
+
             renderKitaplar(filtered);
         }
 
+        function switchView(view) {
+            currentView = view;
+
+            document.getElementById('view-table').classList.toggle('active', view === 'table');
+            document.getElementById('view-grid').classList.toggle('active', view === 'grid');
+
+            document.getElementById('kitap-table').style.display = view === 'table' ? 'block' : 'none';
+            document.getElementById('kitap-grid').style.display = view === 'grid' ? 'grid' : 'none';
+
+            applyFilters();
+        }
+
         function renderKitaplar(kitaplar) {
-            const container = document.getElementById('kitap-table');
+            const tableContainer = document.getElementById('kitap-table');
+            const gridContainer = document.getElementById('kitap-grid');
+            const pageInfo = document.getElementById('page-info');
 
             if (!kitaplar || kitaplar.length === 0) {
-                Utils.showEmpty(container, 'Kitap bulunamadı', '📕');
+                Utils.showEmpty(tableContainer, 'Kitap bulunamadı', '📕');
+                gridContainer.innerHTML = '';
+                pageInfo.textContent = '';
                 return;
             }
 
-            container.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Kitap Adı</th>
-                            <th>Yazar</th>
-                            <th>Tür</th>
-                            <th>ISBN</th>
-                            <th>Raf</th>
-                            <th>Durum</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${kitaplar.map(k => `
+            pageInfo.textContent = `${kitaplar.length} kitap bulundu`;
+
+            // Tablo görünümü
+            if (currentView === 'table') {
+                tableContainer.innerHTML = `
+                    <table>
+                        <thead>
                             <tr>
-                                <td><strong>${k.baslik || '-'}</strong></td>
-                                <td>${k.yazar || '-'}</td>
-                                <td><span class="badge badge-purple">${k.turAdi || '-'}</span></td>
-                                <td>${k.isbn || '-'}</td>
-                                <td>${k.rafNo || '-'}</td>
-                                <td>
-                                    ${k.mevcutAdet > 0
-                    ? `<span class="badge badge-success">✓ Mevcut (${k.mevcutAdet})</span>`
-                    : '<span class="badge badge-danger">✗ Yok</span>'
-                }
-                                </td>
+                                <th>Kitap Adı</th>
+                                <th>Yazar</th>
+                                <th>Tür</th>
+                                <th>ISBN</th>
+                                <th>Raf</th>
+                                <th>Durum</th>
+                                <th>İşlem</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${kitaplar.map(k => `
+                                <tr class="fade-in">
+                                    <td><strong>${k.baslik || '-'}</strong></td>
+                                    <td>${k.yazar || '-'}</td>
+                                    <td><span class="badge badge-purple">${k.turAdi || '-'}</span></td>
+                                    <td>${k.isbn || '-'}</td>
+                                    <td>${k.rafNo || '-'}</td>
+                                    <td>
+                                        ${k.mevcutAdet > 0
+                        ? `<span class="badge badge-success">✓ Mevcut (${k.mevcutAdet})</span>`
+                        : '<span class="badge badge-danger">✗ Yok</span>'
+                    }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-small btn-gradient" onclick="openKitapDetay(${k.kitapID}, '${(k.baslik || '').replace(/'/g, "\\'")}')">
+                                            ⭐ Değerlendir
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            // Kart görünümü
+            gridContainer.innerHTML = kitaplar.map(k => `
+                <div class="book-card fade-in" onclick="openKitapDetay(${k.kitapID}, '${(k.baslik || '').replace(/'/g, "\\'")}')">
+                    <div class="book-title">${k.baslik || '-'}</div>
+                    <div class="book-author">✍️ ${k.yazar || 'Bilinmiyor'}</div>
+                    <div class="book-meta">
+                        <span class="badge badge-purple">${k.turAdi || '-'}</span>
+                        <span class="book-stock ${k.mevcutAdet > 0 ? 'available' : 'unavailable'}">
+                            ${k.mevcutAdet > 0 ? `✓ ${k.mevcutAdet} adet` : '✗ Yok'}
+                        </span>
+                    </div>
+                    <div style="margin-top: 10px; text-align: center;">
+                        <span class="badge badge-info">⭐ Değerlendir</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Kitap detay modal aç
+        async function openKitapDetay(kitapId, kitapAdi) {
+            const modal = document.getElementById('kitap-modal');
+            const modalContent = document.getElementById('modal-content');
+
+            document.getElementById('modal-kitap-adi').textContent = kitapAdi;
+            modal.style.display = 'flex';
+
+            modalContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Yükleniyor...</span>
+                </div>
             `;
+
+            try {
+                const [puan, degerlendirmeler] = await Promise.all([
+                    api.getKitapPuan(kitapId),
+                    api.getKitapDegerlendirmeleri(kitapId)
+                ]);
+
+                const ortalamaPuan = puan.ortalamaPuan || 0;
+                const sayisi = puan.degerlendirmeSayisi || 0;
+
+                modalContent.innerHTML = `
+                    <div class="puan-ozet">
+                        <div class="ortalama-puan">
+                            <span class="puan-deger">${ortalamaPuan.toFixed(1)}</span>
+                            <span class="puan-yildiz">⭐</span>
+                        </div>
+                        <div class="puan-sayisi">${sayisi} değerlendirme</div>
+                    </div>
+                    
+                    <div class="degerlendirme-form">
+                        <h4>📝 Değerlendirmeniz</h4>
+                        <div class="puan-secim">
+                            <label>Puan:</label>
+                            <div class="yildizlar" id="yildiz-secim">
+                                ${[1, 2, 3, 4, 5].map(i => `<span class="yildiz" data-puan="${i}">☆</span>`).join('')}
+                            </div>
+                            <span id="secilen-puan">0/5</span>
+                        </div>
+                        <textarea id="yorum-input" placeholder="Yorumunuz (isteğe bağlı)..." rows="3"></textarea>
+                        <button class="btn btn-gradient" onclick="gonderDegerlendirme(${kitapId})">
+                            Gönder
+                        </button>
+                    </div>
+                    
+                    <div class="yorumlar-liste">
+                        <h4>💬 Yorumlar</h4>
+                        ${degerlendirmeler.length === 0
+                        ? '<p class="empty-message">Henüz yorum yok</p>'
+                        : degerlendirmeler.map(d => {
+                            const user = Auth.getUser();
+                            const isOwner = user && user.id == d.uyeID;
+                            const isAdmin = user && user.role === 'Yonetici';
+                            const canDelete = isOwner || isAdmin;
+
+                            return `
+                                <div class="yorum-item">
+                                    <div class="yorum-header">
+                                        <span class="yorum-yazar">👤 ${d.adSoyad}</span>
+                                        <span class="yorum-puan">${'⭐'.repeat(d.puan)}</span>
+                                        <span class="yorum-tarih">${Utils.formatDate(d.tarih)}</span>
+                                        ${canDelete ? `<button class="btn-sil" onclick="silDegerlendirme(${d.degerlendirmeID}, ${kitapId})">🗑️</button>` : ''}
+                                    </div>
+                                    ${d.yorum ? `<p class="yorum-text">${d.yorum}</p>` : ''}
+                                </div>
+                            `;
+                        }).join('')
+                    }
+                    </div>
+                `;
+
+                // Yıldız seçim event'leri
+                let secilenPuan = 0;
+                document.querySelectorAll('.yildiz').forEach(yildiz => {
+                    yildiz.addEventListener('click', function () {
+                        secilenPuan = parseInt(this.dataset.puan);
+                        document.querySelectorAll('.yildiz').forEach((y, i) => {
+                            y.textContent = i < secilenPuan ? '★' : '☆';
+                            y.classList.toggle('aktif', i < secilenPuan);
+                        });
+                        document.getElementById('secilen-puan').textContent = secilenPuan + '/5';
+                    });
+
+                    yildiz.addEventListener('mouseover', function () {
+                        const puan = parseInt(this.dataset.puan);
+                        document.querySelectorAll('.yildiz').forEach((y, i) => {
+                            y.textContent = i < puan ? '★' : '☆';
+                        });
+                    });
+
+                    yildiz.addEventListener('mouseout', function () {
+                        document.querySelectorAll('.yildiz').forEach((y, i) => {
+                            y.textContent = i < secilenPuan ? '★' : '☆';
+                        });
+                    });
+                });
+
+                window.secilenPuanGlobal = () => secilenPuan;
+
+            } catch (error) {
+                modalContent.innerHTML = `<div class="error-message">Yüklenemedi: ${error.message}</div>`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('kitap-modal').style.display = 'none';
+        }
+
+        async function gonderDegerlendirme(kitapId) {
+            const puan = window.secilenPuanGlobal();
+            const yorum = document.getElementById('yorum-input').value.trim();
+
+            if (puan < 1 || puan > 5) {
+                alert('Lütfen 1-5 arası puan seçin!');
+                return;
+            }
+
+            try {
+                await api.degerlendirmeEkle(kitapId, puan, yorum);
+                alert('Değerlendirmeniz kaydedildi! Teşekkürler.');
+                closeModal();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+
+        async function silDegerlendirme(degerlendirmeId, kitapId) {
+            if (!confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+
+            try {
+                await api.degerlendirmeSil(degerlendirmeId);
+                alert('Yorum silindi.');
+                // Modal'ı yeniden yükle
+                const kitapAdi = document.getElementById('modal-kitap-adi').textContent;
+                openKitapDetay(kitapId, kitapAdi);
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
         }
     </script>
+
+    <!-- Kitap Detay Modal -->
+    <div id="kitap-modal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="closeModal()"></div>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="modal-kitap-adi">Kitap Detay</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                <!-- İçerik JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        .modal-dialog {
+            position: relative;
+            background: #1a1a2e;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            border: 1px solid #333;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(80vh - 80px);
+        }
+
+        .puan-ozet {
+            text-align: center;
+            padding: 20px;
+            background: #252545;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .ortalama-puan {
+            font-size: 48px;
+            font-weight: bold;
+        }
+
+        .puan-deger {
+            color: var(--accent-yellow);
+        }
+
+        .puan-yildiz {
+            margin-left: 10px;
+        }
+
+        .puan-sayisi {
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .degerlendirme-form {
+            background: #252545;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .degerlendirme-form h4 {
+            margin: 0 0 15px 0;
+        }
+
+        .puan-secim {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .yildizlar {
+            display: flex;
+            gap: 5px;
+        }
+
+        .yildiz {
+            font-size: 28px;
+            cursor: pointer;
+            color: #ccc;
+            transition: color 0.2s;
+        }
+
+        .yildiz.aktif,
+        .yildiz:hover {
+            color: var(--accent-yellow);
+        }
+
+        #yorum-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            resize: none;
+            margin-bottom: 15px;
+        }
+
+        .yorumlar-liste h4 {
+            margin: 0 0 15px 0;
+        }
+
+        .yorum-item {
+            background: #252545;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .yorum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .yorum-yazar {
+            font-weight: 600;
+        }
+
+        .yorum-puan {
+            color: var(--accent-yellow);
+        }
+
+        .yorum-tarih {
+            color: var(--text-secondary);
+        }
+
+        .yorum-text {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 20px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .book-card {
+            cursor: pointer;
+        }
+
+        .btn-sil {
+            background: #dc3545;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: auto;
+            transition: all 0.2s;
+        }
+
+        .btn-sil:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+    </style>
 </body>
 
 </html>

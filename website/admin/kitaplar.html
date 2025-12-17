@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kitap Yönetimi - Kütüphane Sistemi</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="../css/styles.css">
 </head>
 
 <body>
@@ -14,37 +14,33 @@
             <div class="sidebar-header">
                 <div class="sidebar-logo">
                     <span class="icon">📚</span>
-                    <span class="text">Yönetim</span>
+                    <span class="text">Yönetici Paneli</span>
                 </div>
             </div>
 
             <nav class="sidebar-nav">
-                <a href="/admin/index.html" class="nav-item">
-                    <span class="icon">📊</span>
-                    <span>Dashboard</span>
+                <a href="./index.html" class="nav-item">
+                    <span class="icon">🏠</span>
+                    <span>Ana Sayfa</span>
                 </a>
-                <a href="/admin/kitaplar.html" class="nav-item">
+                <a href="./kitaplar.html" class="nav-item">
                     <span class="icon">📖</span>
                     <span>Kitaplar</span>
                 </a>
-                <a href="/admin/uyeler.html" class="nav-item">
+                <a href="./uyeler.html" class="nav-item">
                     <span class="icon">👥</span>
                     <span>Üyeler</span>
                 </a>
-                <a href="/admin/odunc.html" class="nav-item">
+                <a href="./odunc.html" class="nav-item">
                     <span class="icon">📋</span>
                     <span>Ödünç İşlemleri</span>
                 </a>
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-card">
-                    <div class="user-avatar" id="user-avatar">?</div>
-                    <div class="user-info">
-                        <div class="user-name" id="user-name">Yükleniyor...</div>
-                        <div class="user-role" id="user-role">Yönetici</div>
-                    </div>
-                    <button class="logout-btn" onclick="Auth.logout()" title="Çıkış Yap">🚪</button>
+                <div class="logout-card" onclick="Auth.logout()">
+                    <span class="icon">🚪</span>
+                    <span>Çıkış Yap</span>
                 </div>
             </div>
         </aside>
@@ -73,7 +69,7 @@
         </main>
     </div>
 
-    <script src="/js/api.js"></script>
+    <script src="../js/api.js"></script>
     <script>
         if (!Auth.requireAuth()) { }
         else if (Auth.getUser().role !== 'Yonetici') {

@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ödünçlerim - Kütüphane Sistemi</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="./css/styles.css">
 </head>
 
 <body>
@@ -20,32 +20,28 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="/index.html" class="nav-item">
+                <a href="./index.html" class="nav-item">
                     <span class="icon">🏠</span>
                     <span>Ana Sayfa</span>
                 </a>
-                <a href="/kitaplar.html" class="nav-item">
+                <a href="./kitaplar.html" class="nav-item">
                     <span class="icon">📖</span>
                     <span>Kitaplar</span>
                 </a>
-                <a href="/odunclerim.html" class="nav-item">
+                <a href="./odunclerim.html" class="nav-item">
                     <span class="icon">📋</span>
                     <span>Ödünçlerim</span>
                 </a>
-                <a href="/profil.html" class="nav-item">
+                <a href="./profil.html" class="nav-item">
                     <span class="icon">👤</span>
                     <span>Profil</span>
                 </a>
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-card">
-                    <div class="user-avatar" id="user-avatar">?</div>
-                    <div class="user-info">
-                        <div class="user-name" id="user-name">Yükleniyor...</div>
-                        <div class="user-role" id="user-role">Üye</div>
-                    </div>
-                    <button class="logout-btn" onclick="Auth.logout()" title="Çıkış Yap">🚪</button>
+                <div class="logout-card" onclick="Auth.logout()">
+                    <span class="icon">🚪</span>
+                    <span>Çıkış Yap</span>
                 </div>
             </div>
         </aside>
@@ -78,7 +74,7 @@
 
             <div class="table-card">
                 <div class="table-header">
-                    <h2>Tüm Ödünç İşlemlerim</h2>
+                    <h2>Tüm Ödünçlerim</h2>
                 </div>
                 <div class="table-body" id="odunc-table">
                     <div class="loading">
@@ -90,7 +86,7 @@
         </main>
     </div>
 
-    <script src="/js/api.js"></script>
+    <script src="./js/api.js"></script>
     <script>
         Auth.requireAuth();
 
@@ -145,6 +141,7 @@
                     </table>
                 `;
             } catch (error) {
+                console.error(error);
                 Utils.showError(container, 'Veriler yüklenemedi');
             }
         }

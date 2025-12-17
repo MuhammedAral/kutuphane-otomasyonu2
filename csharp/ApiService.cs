@@ -13,7 +13,7 @@ namespace KutuphaneOtomasyon
         { 
             PropertyNameCaseInsensitive = true 
         };
-        private static string _baseUrl = "https://kutuphane-api.onrender.com";
+        private static string _baseUrl = "http://localhost:5000";
         private static string? _token;
         
         static ApiService()
