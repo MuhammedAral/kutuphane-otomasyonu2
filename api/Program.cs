@@ -673,18 +673,36 @@ app.MapPost("/api/auth/verify-email", async (VerifyRequest request) =>
 
 // ==================== KİTAPLAR API ====================
 
-app.MapGet("/api/kitaplar", () =>
+app.MapGet("/api/kitaplar", (string? search, int? turId) =>
 {
     var kitaplar = new List<object>();
     using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new NpgsqlCommand(@"
+    var query = @"
         SELECT k.KitapID, k.Baslik, k.Yazar, COALESCE(k.ISBN, '') as ISBN, 
-               COALESCE(kt.TurAdi, '-') as TurAdi, k.StokAdedi, k.MevcutAdet, COALESCE(k.RafNo, '') as RafNo
+               COALESCE(kt.TurAdi, '-') as TurAdi, k.StokAdedi, k.MevcutAdet, COALESCE(k.RafNo, '') as RafNo,
+               k.TurID
         FROM Kitaplar k
         LEFT JOIN KitapTurleri kt ON k.TurID = kt.TurID
-        ORDER BY k.KitapID DESC", conn);
+        WHERE 1=1";
+    
+    // Arama filtresi
+    if (!string.IsNullOrEmpty(search))
+        query += " AND (k.Baslik ILIKE @search OR k.Yazar ILIKE @search OR k.ISBN ILIKE @search)";
+    
+    // Tür filtresi
+    if (turId.HasValue && turId.Value > 0)
+        query += " AND k.TurID = @turId";
+    
+    query += " ORDER BY k.KitapID DESC";
+    
+    var cmd = new NpgsqlCommand(query, conn);
+    
+    if (!string.IsNullOrEmpty(search))
+        cmd.Parameters.AddWithValue("@search", $"%{search}%");
+    if (turId.HasValue && turId.Value > 0)
+        cmd.Parameters.AddWithValue("@turId", turId.Value);
     
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
@@ -698,7 +716,8 @@ app.MapGet("/api/kitaplar", () =>
             TurAdi = reader.GetString(4),
             StokAdedi = reader.GetInt32(5),
             MevcutAdet = reader.GetInt32(6),
-            RafNo = reader.GetString(7)
+            RafNo = reader.GetString(7),
+            TurID = reader.IsDBNull(8) ? (int?)null : reader.GetInt32(8)
         });
     }
     return Results.Ok(kitaplar);
