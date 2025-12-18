@@ -36,6 +36,30 @@ function setupEventListeners() {
     // Login formu
     document.getElementById('login-form').addEventListener('submit', handleLogin);
 
+    // Kayıt ol linki
+    document.getElementById('register-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        showRegister();
+    });
+
+    // Kayıt formu
+    document.getElementById('register-form').addEventListener('submit', handleRegister);
+
+    // Giriş'e geri dön linki
+    document.getElementById('back-to-login').addEventListener('click', (e) => {
+        e.preventDefault();
+        showLogin();
+    });
+
+    // Doğrulama formu
+    document.getElementById('verify-form').addEventListener('submit', handleVerify);
+
+    // Kayıt'a geri dön linki
+    document.getElementById('back-to-register').addEventListener('click', (e) => {
+        e.preventDefault();
+        showRegister();
+    });
+
     // Alt navigasyon
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -84,7 +108,127 @@ function debounce(func, wait) {
 
 function showLogin() {
     document.getElementById('login-page').style.display = 'block';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('verify-page').style.display = 'none';
     document.getElementById('main-app').style.display = 'none';
+}
+
+// Kayıt ol sayfasını göster
+function showRegister() {
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'block';
+    document.getElementById('verify-page').style.display = 'none';
+    document.getElementById('main-app').style.display = 'none';
+}
+
+// Doğrulama sayfasını göster
+let pendingUserId = null;
+let pendingEmail = '';
+
+function showVerify(userId, email) {
+    pendingUserId = userId;
+    pendingEmail = email;
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('verify-page').style.display = 'block';
+    document.getElementById('main-app').style.display = 'none';
+    document.getElementById('verify-email-text').textContent = `${email} adresine gönderilen kodu girin`;
+}
+
+// Kayıt işlemi
+async function handleRegister(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('register-username').value.trim();
+    const fullname = document.getElementById('register-fullname').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const password = document.getElementById('register-password').value;
+    const passwordConfirm = document.getElementById('register-password-confirm').value;
+    const errorEl = document.getElementById('register-error');
+    const btn = e.target.querySelector('button');
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+
+    // Validasyonlar
+    if (!username || !fullname || !email || !password) {
+        showError(errorEl, 'Tüm alanları doldurunuz.');
+        return;
+    }
+
+    if (!email.endsWith('@gmail.com')) {
+        showError(errorEl, 'Sadece @gmail.com uzantılı e-posta adresleri kabul edilir.');
+        return;
+    }
+
+    if (password.length < 6) {
+        showError(errorEl, 'Şifre en az 6 karakter olmalıdır.');
+        return;
+    }
+
+    if (password !== passwordConfirm) {
+        showError(errorEl, 'Şifreler eşleşmiyor.');
+        return;
+    }
+
+    // Loading durumu
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'block';
+    errorEl.classList.remove('show');
+
+    try {
+        const result = await api.register(username, fullname, email, phone, password);
+        showToast('Kayıt başarılı! E-postanızı kontrol edin. 📧', 'success');
+        showVerify(result.userId, email);
+    } catch (error) {
+        showError(errorEl, error.message);
+    } finally {
+        btn.disabled = false;
+        btnText.style.display = 'block';
+        btnLoader.style.display = 'none';
+    }
+}
+
+// Doğrulama işlemi
+async function handleVerify(e) {
+    e.preventDefault();
+
+    const code = document.getElementById('verify-code').value.trim();
+    const errorEl = document.getElementById('verify-error');
+    const btn = e.target.querySelector('button');
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+
+    if (!code || code.length !== 6) {
+        showError(errorEl, '6 haneli doğrulama kodunu girin.');
+        return;
+    }
+
+    if (!pendingUserId) {
+        showError(errorEl, 'Geçersiz işlem. Lütfen tekrar kayıt olun.');
+        return;
+    }
+
+    // Loading durumu
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'block';
+    errorEl.classList.remove('show');
+
+    try {
+        await api.verifyEmail(pendingUserId, code);
+        showToast('Hesabınız doğrulandı! Giriş yapabilirsiniz. 🎉', 'success');
+        pendingUserId = null;
+        pendingEmail = '';
+        showLogin();
+    } catch (error) {
+        showError(errorEl, error.message);
+    } finally {
+        btn.disabled = false;
+        btnText.style.display = 'block';
+        btnLoader.style.display = 'none';
+    }
 }
 
 async function handleLogin(e) {

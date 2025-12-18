@@ -70,6 +70,89 @@
             </div>
         </div>
 
+        <!-- Register Page -->
+        <div id="register-page" class="page" style="display: none;">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">📝</div>
+                    <h1>Kayıt Ol</h1>
+                    <p>Yeni hesap oluştur</p>
+                </div>
+
+                <form id="register-form" class="login-form">
+                    <div class="input-group">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="register-username" placeholder="Kullanıcı Adı" required autocomplete="username">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">📛</span>
+                        <input type="text" id="register-fullname" placeholder="Ad Soyad" required autocomplete="name">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="register-email" placeholder="E-posta (@gmail.com)" required autocomplete="email">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">📱</span>
+                        <input type="tel" id="register-phone" placeholder="Telefon (isteğe bağlı)" autocomplete="tel">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="register-password" placeholder="Şifre (en az 6 karakter)" required autocomplete="new-password">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="register-password-confirm" placeholder="Şifre Tekrar" required autocomplete="new-password">
+                    </div>
+
+                    <div id="register-error" class="error-message"></div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="btn-text">Kayıt Ol</span>
+                        <span class="btn-loader" style="display: none;"></span>
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <a href="#" id="back-to-login">Zaten hesabınız var mı? <strong>Giriş Yap</strong></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verify Email Page -->
+        <div id="verify-page" class="page" style="display: none;">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">✉️</div>
+                    <h1>E-posta Doğrula</h1>
+                    <p id="verify-email-text">E-postanıza gönderilen kodu girin</p>
+                </div>
+
+                <form id="verify-form" class="login-form">
+                    <div class="input-group">
+                        <span class="input-icon">🔢</span>
+                        <input type="text" id="verify-code" placeholder="6 haneli doğrulama kodu" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric">
+                    </div>
+
+                    <div id="verify-error" class="error-message"></div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="btn-text">Doğrula</span>
+                        <span class="btn-loader" style="display: none;"></span>
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <a href="#" id="back-to-register">Geri dön</a>
+                </div>
+            </div>
+        </div>
+
         <!-- Main App Container -->
         <div id="main-app" class="main-app" style="display: none;">
             <!-- Header -->
