@@ -115,6 +115,42 @@ if (Directory.Exists(websitePath))
     });
 }
 
+// Static files - mobile klasöründen (PWA Mobil Uygulama)
+var mobilePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "mobile");
+if (Directory.Exists(mobilePath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mobilePath),
+        RequestPath = "/mobile",
+        OnPrepareResponse = ctx =>
+        {
+            // UTF-8 charset ekle
+            if (ctx.File.Name.EndsWith(".html"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "text/html; charset=utf-8");
+            }
+            else if (ctx.File.Name.EndsWith(".js"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "application/javascript; charset=utf-8");
+            }
+            else if (ctx.File.Name.EndsWith(".css"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "text/css; charset=utf-8");
+            }
+            else if (ctx.File.Name.EndsWith(".json"))
+            {
+                ctx.Context.Response.Headers.Append("Content-Type", "application/json; charset=utf-8");
+            }
+            // PWA için service worker header
+            else if (ctx.File.Name.EndsWith("sw.js"))
+            {
+                ctx.Context.Response.Headers.Append("Service-Worker-Allowed", "/mobile");
+            }
+        }
+    });
+}
+
 // Database connection string - SUPABASE PostgreSQL (Transaction Pooler - IPv4 Compatible)
 // No Reset On Close=true is required for Transaction Pooler (doesn't support PREPARE statements)
 var connectionString = "Host=aws-1-eu-central-1.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.cajuuwmwldceggretuyq;Password=201005Ma.-;SSL Mode=Require;Trust Server Certificate=true;Multiplexing=false;No Reset On Close=true;Command Timeout=60";
@@ -938,7 +974,7 @@ app.MapGet("/api/uyeler/{id}", (int id) =>
     using var conn = new NpgsqlConnection(connectionString);
     conn.Open();
     
-    var cmd = new NpgsqlCommand(@"SELECT * FROM Kullanicilar WHERE KullaniciID = @id", conn);
+    var cmd = new NpgsqlCommand(@"SELECT KullaniciID, KullaniciAdi, AdSoyad, Email, Telefon, Rol, AktifMi, OlusturmaTarihi FROM Kullanicilar WHERE KullaniciID = @id", conn);
     cmd.Parameters.AddWithValue("@id", id);
     
     using var reader = cmd.ExecuteReader();
@@ -946,13 +982,14 @@ app.MapGet("/api/uyeler/{id}", (int id) =>
     {
         return Results.Ok(new
         {
-            KullaniciID = reader["KullaniciID"],
-            KullaniciAdi = reader["KullaniciAdi"],
-            AdSoyad = reader["AdSoyad"],
-            Email = reader["Email"],
-            Telefon = reader["Telefon"],
-            Rol = reader["Rol"],
-            AktifMi = reader["AktifMi"]
+            KullaniciID = reader.GetInt32(0),
+            KullaniciAdi = reader.GetString(1),
+            AdSoyad = reader.GetString(2),
+            Email = reader.IsDBNull(3) ? "" : reader.GetString(3),
+            Telefon = reader.IsDBNull(4) ? "" : reader.GetString(4),
+            Rol = reader.GetString(5),
+            AktifMi = reader.GetBoolean(6),
+            OlusturmaTarihi = reader.IsDBNull(7) ? (DateTime?)null : reader.GetDateTime(7)
         });
     }
     return Results.NotFound(new { message = "Üye bulunamadı" });
@@ -1013,10 +1050,13 @@ app.MapGet("/api/odunc", (string? filter, string? search) =>
         islemler.Add(new
         {
             IslemID = reader.GetInt32(0),
+            KitapAdi = reader.GetString(1),  // Mobil uygulama için
             Baslik = reader.GetString(1),
+            UyeAdi = reader.GetString(2),    // Mobil uygulama için
             AdSoyad = reader.GetString(2),
             OduncTarihi = reader.GetDateTime(3),
             BeklenenIadeTarihi = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4),
+            IadeTarih = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4),  // Mobil için alias
             IadeTarihi = reader.IsDBNull(5) ? (DateTime?)null : reader.GetDateTime(5),
             Durum = reader.GetString(6),
             GecikmeGun = reader.GetInt32(7),
@@ -1204,10 +1244,12 @@ app.MapGet("/api/odunc/uye/{uyeId}", (int uyeId) =>
         islemler.Add(new
         {
             IslemID = reader.GetInt32(0),
-            Baslik = reader.GetString(1),
+            KitapAdi = reader.GetString(1),  // Mobil uygulama için uyumlu isim
+            Baslik = reader.GetString(1),     // Geriye uyumluluk için
             Yazar = reader.GetString(2),
             OduncTarihi = reader.GetDateTime(3),
             BeklenenIadeTarihi = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4),
+            IadeTarih = reader.IsDBNull(4) ? (DateTime?)null : reader.GetDateTime(4), // Mobil için alias
             IadeTarihi = reader.IsDBNull(5) ? (DateTime?)null : reader.GetDateTime(5),
             Durum = reader.GetString(6),
             GecikmeGun = reader.GetInt32(7)
@@ -1835,58 +1877,6 @@ app.MapGet("/api/raporlar", () =>
 .WithTags("Raporlar")
 .RequireAuthorization();
 
-// ==================== DEĞERLENDİRME API ====================
-
-app.MapPost("/api/degerlendirmeler", (HttpContext context) =>
-{
-    // Bu endpoint zaten C# client tarafında direkt SQL ile yapılıyor ama
-    // API standardizasyonu için buraya eklenebilir. 
-    // Şimdilik C# tarafındaki yapıya dokunmayıp sadece SİLME işlemini ekliyoruz.
-    return Results.Ok();
-})
-.WithName("CreateDegerlendirme")
-.WithTags("Değerlendirmeler")
-.RequireAuthorization();
-
-app.MapDelete("/api/degerlendirmeler/{id}", (int id, HttpContext context) =>
-{
-    var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
-    var roleClaim = context.User.FindFirst(ClaimTypes.Role);
-    
-    if (userIdClaim == null) return Results.Unauthorized();
-    
-    int userId = int.Parse(userIdClaim.Value);
-    string userRole = roleClaim?.Value ?? "Uye";
-    
-    using var conn = new NpgsqlConnection(connectionString);
-    conn.Open();
-    
-    // Yorumun kime ait olduğunu bul
-    var cmdCheck = new NpgsqlCommand("SELECT UyeID FROM Degerlendirmeler WHERE DegerlendirmeID = @id", conn);
-    cmdCheck.Parameters.AddWithValue("@id", id);
-    var ownerIdObj = cmdCheck.ExecuteScalar();
-    
-    if (ownerIdObj == null || ownerIdObj == DBNull.Value)
-        return Results.NotFound(new { Success = false, Mesaj = "Yorum bulunamadı." });
-        
-    int ownerId = Convert.ToInt32(ownerIdObj);
-    
-    // YETKİ KONTROLÜ: Admin değilse ve Kendi yorumu değilse -> HATA
-    if (userRole != "Yonetici" && userId != ownerId)
-    {
-        return Results.Forbid();
-    }
-    
-    // Silme işlemi
-    var cmdDelete = new NpgsqlCommand("DELETE FROM Degerlendirmeler WHERE DegerlendirmeID = @id", conn);
-    cmdDelete.Parameters.AddWithValue("@id", id);
-    cmdDelete.ExecuteNonQuery();
-    
-    return Results.Ok(new { Success = true, Mesaj = "Yorum başarıyla silindi." });
-})
-.WithName("DeleteDegerlendirme")
-.WithTags("Değerlendirmeler")
-.RequireAuthorization();
 
 app.Run();
 

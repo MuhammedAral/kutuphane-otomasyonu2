@@ -1,25 +1,25 @@
-﻿// ============================================
-// KÜTÜPHANE WEB SİTESİ - API İSTEKLERİ
+// ============================================
+// KÜTÜPHANE MOBİL UYGULAMA - API İSTEKLERİ
 // ============================================
 
 const API_BASE = 'http://localhost:5000/api';
 
 // Token işlemleri
 const Auth = {
-    getToken: () => localStorage.getItem('kutuphane_token'),
-    setToken: (token) => localStorage.setItem('kutuphane_token', token),
-    removeToken: () => localStorage.removeItem('kutuphane_token'),
+    getToken: () => localStorage.getItem('kutuphane_mobile_token'),
+    setToken: (token) => localStorage.setItem('kutuphane_mobile_token', token),
+    removeToken: () => localStorage.removeItem('kutuphane_mobile_token'),
 
     getUser: () => {
-        const user = localStorage.getItem('kutuphane_user');
+        const user = localStorage.getItem('kutuphane_mobile_user');
         try {
             return user ? JSON.parse(user) : null;
         } catch {
             return null;
         }
     },
-    setUser: (user) => localStorage.setItem('kutuphane_user', JSON.stringify(user)),
-    removeUser: () => localStorage.removeItem('kutuphane_user'),
+    setUser: (user) => localStorage.setItem('kutuphane_mobile_user', JSON.stringify(user)),
+    removeUser: () => localStorage.removeItem('kutuphane_mobile_user'),
 
     isLoggedIn: () => {
         const token = Auth.getToken();
@@ -30,24 +30,6 @@ const Auth = {
     logout: () => {
         Auth.removeToken();
         Auth.removeUser();
-        window.location.href = '/login.html';
-    },
-
-    requireAuth: () => {
-        if (!Auth.isLoggedIn()) {
-            window.location.href = '/login.html';
-            return false;
-        }
-        return true;
-    },
-
-    requireRole: (role) => {
-        const user = Auth.getUser();
-        if (!user || user.role !== role) {
-            Auth.logout();
-            return false;
-        }
-        return true;
     }
 };
 
@@ -67,13 +49,13 @@ const api = {
         try {
             const response = await fetch(`${API_BASE}${endpoint}`, config);
 
-            // Unauthorized - çıkış yap
+            // Unauthorized
             if (response.status === 401) {
                 Auth.logout();
+                showLoginPage();
                 return null;
             }
 
-            // Boş response kontrolü
             const text = await response.text();
             if (!text) return null;
 
@@ -122,7 +104,6 @@ const api = {
 
         const payload = JSON.parse(jsonPayload);
 
-        // User bilgilerini çıkar (farklı claim formatlarını dene)
         const user = {
             id: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
                 || payload.nameid || payload.sub || payload.id,
@@ -132,9 +113,7 @@ const api = {
                 || payload.role
         };
 
-        // Validasyon
         if (!user.id || !user.name || !user.role) {
-            console.error('Token payload:', payload);
             throw new Error('Kullanıcı bilgileri alınamadı');
         }
 
@@ -158,28 +137,16 @@ const api = {
         return await this.request('/turler') || [];
     },
 
-    // Ödünç işlemleri - üyeye özel
+    // Ödünç işlemleri
     async getOdunclerim() {
         const user = Auth.getUser();
         if (!user || !user.id) return [];
+
+        // Admin ise tüm ödünçleri getir, değilse sadece kendi ödünçlerini
+        if (user.role === 'Yonetici') {
+            return await this.request('/odunc') || [];
+        }
         return await this.request(`/odunc/uye/${user.id}`) || [];
-    },
-
-    // Tüm ödünç işlemleri (admin için)
-    async getAllOdunc() {
-        return await this.request('/odunc') || [];
-    },
-
-    // Üye bilgileri
-    async getProfilBilgileri() {
-        const user = Auth.getUser();
-        if (!user || !user.id) return null;
-        return await this.request(`/uyeler/${user.id}`);
-    },
-
-    // Tüm üyeler (admin için)
-    async getUyeler() {
-        return await this.request('/uyeler') || [];
     },
 
     // İstatistikler
@@ -190,6 +157,13 @@ const api = {
             oduncteKitap: 0,
             gecikenKitap: 0
         };
+    },
+
+    // Profil bilgileri
+    async getProfilBilgileri() {
+        const user = Auth.getUser();
+        if (!user || !user.id) return null;
+        return await this.request(`/uyeler/${user.id}`);
     },
 
     // Değerlendirmeler
@@ -240,72 +214,29 @@ const Utils = {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     },
 
-    showLoading: (container) => {
-        if (!container) return;
-        container.innerHTML = `
-            <div class="loading">
-                <div class="spinner"></div>
-                <span>Yükleniyor...</span>
-            </div>
-        `;
+    isOverdue: (dueDate) => {
+        if (!dueDate) return false;
+        return new Date(dueDate) < new Date();
     },
 
-    showEmpty: (container, message = 'Kayıt bulunamadı', icon = '📭') => {
-        if (!container) return;
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">${icon}</div>
-                <h3>${message}</h3>
-            </div>
-        `;
-    },
-
-    showError: (container, message = 'Bir hata oluştu') => {
-        if (!container) return;
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">⚠️</div>
-                <h3>${message}</h3>
-                <p>Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.</p>
-            </div>
-        `;
+    daysRemaining: (dueDate) => {
+        if (!dueDate) return 0;
+        const diff = new Date(dueDate) - new Date();
+        return Math.ceil(diff / (1000 * 60 * 60 * 24));
     }
 };
 
-// Sayfa yüklendiğinde sidebar kullanıcı bilgilerini güncelle
-document.addEventListener('DOMContentLoaded', () => {
-    const userNameEl = document.getElementById('user-name');
-    const userAvatarEl = document.getElementById('user-avatar');
-    const userRoleEl = document.getElementById('user-role');
-    const sidebarUsernameEl = document.getElementById('sidebar-username');
+// Toast bildirimi
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
 
-    const user = Auth.getUser();
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
 
-    if (userNameEl && user) {
-        userNameEl.textContent = user.name || 'Kullanıcı';
-    }
-
-    if (userAvatarEl && user) {
-        userAvatarEl.textContent = Utils.getInitials(user.name);
-    }
-
-    if (userRoleEl && user) {
-        userRoleEl.textContent = user.role === 'Yonetici' ? 'Yönetici' : 'Üye';
-    }
-
-    // Sidebar başlığında kullanıcı adını göster
-    if (sidebarUsernameEl && user) {
-        sidebarUsernameEl.textContent = user.name || 'Yönetim';
-    }
-
-    // Aktif sayfa işaretleme
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    document.querySelectorAll('.nav-item').forEach(item => {
-        const href = item.getAttribute('href');
-        if (href === currentPage || href === '/' + currentPage) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
-    });
-});
+function showLoginPage() {
+    document.getElementById('login-page').style.display = 'block';
+}

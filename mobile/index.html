@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Kütüphane Otomasyon Sistemi - Mobil Uygulama">
+
+    <title>Kütüphane Mobil</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="./css/mobile.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Splash Screen -->
+        <div id="splash-screen" class="splash-screen">
+            <div class="splash-content">
+                <div class="splash-icon">📚</div>
+                <h1>Kütüphane</h1>
+                <div class="splash-loader"></div>
+            </div>
+        </div>
+
+        <!-- Login Page -->
+        <div id="login-page" class="page" style="display: none;">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">📚</div>
+                    <h1>Kütüphane</h1>
+                    <p>Mobil Uygulama</p>
+                </div>
+
+                <form id="login-form" class="login-form">
+                    <div class="input-group">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="login-username" placeholder="Kullanıcı Adı" required
+                            autocomplete="username">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="login-password" placeholder="Şifre" required
+                            autocomplete="current-password">
+                    </div>
+
+                    <div id="login-error" class="error-message"></div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="btn-text">Giriş Yap</span>
+                        <span class="btn-loader" style="display: none;"></span>
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <a href="#" id="register-link">Hesabınız yok mu? <strong>Kayıt Ol</strong></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Container -->
+        <div id="main-app" class="main-app" style="display: none;">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1 id="page-title">Ana Sayfa</h1>
+                </div>
+                <div class="header-right">
+                    <div class="user-avatar" id="header-avatar">MA</div>
+                </div>
+            </header>
+
+            <!-- Page Container -->
+            <main class="page-container">
+                <!-- Home Page -->
+                <section id="home-section" class="section active">
+                    <div class="welcome-card">
+                        <div class="welcome-text">
+                            <h2>Hoş Geldiniz 👋</h2>
+                            <p id="welcome-name">Kullanıcı</p>
+                        </div>
+                        <div class="welcome-icon">📖</div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card" style="--accent: #667eea;">
+                            <div class="stat-icon">📚</div>
+                            <div class="stat-value" id="stat-books">0</div>
+                            <div class="stat-label">Toplam Kitap</div>
+                        </div>
+                        <div class="stat-card" style="--accent: #f093fb;">
+                            <div class="stat-icon">📋</div>
+                            <div class="stat-value" id="stat-loans">0</div>
+                            <div class="stat-label">Ödünç Aldığım</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="section-header">
+                        <h3>Hızlı İşlemler</h3>
+                    </div>
+                    <div class="quick-actions">
+                        <button class="action-btn" onclick="navigateTo('books')">
+                            <span class="action-icon">🔍</span>
+                            <span>Kitap Ara</span>
+                        </button>
+                        <button class="action-btn" onclick="navigateTo('loans')">
+                            <span class="action-icon">📋</span>
+                            <span>Ödünçlerim</span>
+                        </button>
+                        <button class="action-btn" onclick="navigateTo('profile')">
+                            <span class="action-icon">👤</span>
+                            <span>Profilim</span>
+                        </button>
+                    </div>
+
+                    <!-- Recent Books Preview -->
+                    <div class="section-header">
+                        <h3>Son Eklenen Kitaplar</h3>
+                        <button class="see-all-btn" onclick="navigateTo('books')">Tümünü Gör →</button>
+                    </div>
+                    <div id="recent-books" class="horizontal-scroll">
+                        <div class="loading-placeholder">Yükleniyor...</div>
+                    </div>
+                </section>
+
+                <!-- Books Page -->
+                <section id="books-section" class="section">
+                    <div class="search-container">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="search-input" placeholder="Kitap veya yazar ara...">
+                            <button class="search-clear" id="search-clear" style="display: none;">✕</button>
+                        </div>
+                        <div class="filter-chips" id="filter-chips">
+                            <button class="chip active" data-filter="all">Tümü</button>
+                        </div>
+                    </div>
+
+                    <div id="books-list" class="books-list">
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Kitaplar yükleniyor...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Loans Page -->
+                <section id="loans-section" class="section">
+                    <div class="loans-tabs">
+                        <button class="tab-btn active" data-tab="active">Aktif</button>
+                        <button class="tab-btn" data-tab="history">Geçmiş</button>
+                    </div>
+
+                    <div id="loans-list" class="loans-list">
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Ödünç işlemleri yükleniyor...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Profile Page -->
+                <section id="profile-section" class="section">
+                    <div class="profile-header">
+                        <div class="profile-avatar" id="profile-avatar">MA</div>
+                        <h2 id="profile-name">Kullanıcı Adı</h2>
+                        <p id="profile-role" class="profile-role">Üye</p>
+                    </div>
+
+                    <div class="profile-menu">
+                        <div class="menu-item">
+                            <span class="menu-icon">👤</span>
+                            <div class="menu-content">
+                                <span class="menu-label">Ad Soyad</span>
+                                <span class="menu-value" id="profile-fullname">-</span>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <span class="menu-icon">📧</span>
+                            <div class="menu-content">
+                                <span class="menu-label">E-posta</span>
+                                <span class="menu-value" id="profile-email">-</span>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <span class="menu-icon">📱</span>
+                            <div class="menu-content">
+                                <span class="menu-label">Telefon</span>
+                                <span class="menu-value" id="profile-phone">-</span>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <span class="menu-icon">📅</span>
+                            <div class="menu-content">
+                                <span class="menu-label">Kayıt Tarihi</span>
+                                <span class="menu-value" id="profile-date">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger btn-block" onclick="logout()">
+                        🚪 Çıkış Yap
+                    </button>
+                </section>
+            </main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <button class="nav-item active" data-page="home">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">Ana Sayfa</span>
+                </button>
+                <button class="nav-item" data-page="books">
+                    <span class="nav-icon">📚</span>
+                    <span class="nav-label">Kitaplar</span>
+                </button>
+                <button class="nav-item" data-page="loans">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label" id="nav-loans-label">Ödünçlerim</span>
+                </button>
+                <button class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-label">Profil</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Book Detail Modal -->
+        <div id="book-modal" class="modal">
+            <div class="modal-backdrop" onclick="closeModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-book-title">Kitap Adı</h2>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body" id="modal-body">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+
+</html>
