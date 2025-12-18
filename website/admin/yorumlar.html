@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yorumlar - Kütüphane Yönetim</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Admin Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="icon">📚</span>
+                    <span class="text">Yönetici Paneli</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="./index.html" class="nav-item">
+                    <span class="icon">🏠</span>
+                    <span>Ana Sayfa</span>
+                </a>
+                <a href="./kitaplar.html" class="nav-item">
+                    <span class="icon">📖</span>
+                    <span>Kitaplar</span>
+                </a>
+                <a href="./uyeler.html" class="nav-item">
+                    <span class="icon">👥</span>
+                    <span>Üyeler</span>
+                </a>
+                <a href="./odunc.html" class="nav-item">
+                    <span class="icon">📋</span>
+                    <span>Ödünç İşlemleri</span>
+                </a>
+                <a href="./yorumlar.html" class="nav-item active">
+                    <span class="icon">💬</span>
+                    <span>Yorumlar</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="logout-card" onclick="Auth.logout()">
+                    <span class="icon">🚪</span>
+                    <span>Çıkış Yap</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>💬 Yorum Yönetimi</h1>
+                <p>Kullanıcı yorumlarını görüntüleyin ve yönetin.</p>
+            </div>
+
+            <!-- Yorumlar Tablosu -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h2>Tüm Yorumlar</h2>
+                    <div class="search-box">
+                        <span class="icon">🔍</span>
+                        <input type="text" id="search-input" placeholder="Kitap veya üye ara"
+                            onkeyup="filterYorumlar()">
+                    </div>
+                </div>
+                <div class="table-body" id="yorumlar-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Yükleniyor...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="../js/api.js?v=3"></script>
+    <script>
+        // Admin yetki kontrolü
+        if (!Auth.requireAuth()) { }
+        else if (Auth.getUser().role !== 'Yonetici') {
+            window.location.href = '/index.html';
+        }
+
+        let allYorumlar = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadYorumlar();
+        });
+
+        async function loadYorumlar() {
+            const container = document.getElementById('yorumlar-container');
+
+            try {
+                allYorumlar = await api.getAllDegerlendirmeler();
+
+                if (!allYorumlar || allYorumlar.length === 0) {
+                    Utils.showEmpty(container, 'Henüz yorum yapılmamış', '💬');
+                    return;
+                }
+
+                renderYorumlar(allYorumlar);
+            } catch (error) {
+                console.error('Yorumlar yüklenemedi:', error);
+                Utils.showError(container, 'Yorumlar yüklenemedi');
+            }
+        }
+
+        function renderYorumlar(yorumlar) {
+            const container = document.getElementById('yorumlar-container');
+
+            if (!yorumlar || yorumlar.length === 0) {
+                Utils.showEmpty(container, 'Sonuç bulunamadı', '🔍');
+                return;
+            }
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kitap</th>
+                            <th>Üye</th>
+                            <th>Puan</th>
+                            <th>Yorum</th>
+                            <th>Tarih</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${yorumlar.map(y => `
+                            <tr>
+                                <td>${y.degerlendirmeID || y.DegerlendirmeID}</td>
+                                <td><strong>${y.baslik || y.Baslik || '-'}</strong></td>
+                                <td>${y.adSoyad || y.AdSoyad || '-'}</td>
+                                <td>
+                                    <span class="badge badge-${getPuanBadge(y.puan || y.Puan)}">
+                                        ${'⭐'.repeat(y.puan || y.Puan || 0)}
+                                    </span>
+                                </td>
+                                <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${y.yorum || y.Yorum || '<em style="color: #666;">Yorum yok</em>'}
+                                </td>
+                                <td>${Utils.formatDate(y.tarih || y.Tarih)}</td>
+                                <td>
+                                    <button class="btn btn-danger-outline" onclick="silYorum(${y.degerlendirmeID || y.DegerlendirmeID})" title="Yorumu Sil">
+                                        🗑️ Sil
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getPuanBadge(puan) {
+            if (puan >= 4) return 'success';
+            if (puan >= 3) return 'warning';
+            return 'danger';
+        }
+
+        function filterYorumlar() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+
+            if (!query) {
+                renderYorumlar(allYorumlar);
+                return;
+            }
+
+            const filtered = allYorumlar.filter(y => {
+                const kitap = (y.baslik || y.Baslik || '').toLowerCase();
+                const uye = (y.adSoyad || y.AdSoyad || '').toLowerCase();
+                const yorum = (y.yorum || y.Yorum || '').toLowerCase();
+                return kitap.includes(query) || uye.includes(query) || yorum.includes(query);
+            });
+
+            renderYorumlar(filtered);
+        }
+
+        async function silYorum(id) {
+            if (!confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+
+            try {
+                await api.degerlendirmeSil(id);
+                showToast('Yorum başarıyla silindi! 🗑️', 'success');
+                await loadYorumlar();
+            } catch (error) {
+                showToast('Yorum silinemedi: ' + error.message, 'error');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+
+</html>

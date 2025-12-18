@@ -220,6 +220,25 @@ const api = {
         return await this.request(`/degerlendirmeler/${id}`, {
             method: 'DELETE'
         });
+    },
+
+    // Profil güncelle (telefon, e-posta) - sadece üyeler için
+    async profilGuncelle(telefon, email) {
+        const user = Auth.getUser();
+        if (!user || !user.id) throw new Error('Giriş yapmalısınız');
+
+        return await this.request(`/uyeler/${user.id}/profil`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                Telefon: telefon || null,
+                Email: email || null
+            })
+        });
+    },
+
+    // Tüm değerlendirmeleri getir (Admin için)
+    async getAllDegerlendirmeler() {
+        return await this.request('/degerlendirmeler') || [];
     }
 };
 

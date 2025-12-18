@@ -1022,7 +1022,7 @@ app.MapPut("/api/uyeler/{id}/profil", (int id, ProfilGuncelleRequest request) =>
     
     return Results.NotFound(new { Success = false, Mesaj = "Kullanıcı bulunamadı" });
 })
-.WithName("UpdateUyeProfil")
+.WithName("UpdateUyeProfilBasit")
 .WithTags("Üyeler")
 .RequireAuthorization();
 
@@ -1310,6 +1310,43 @@ app.MapGet("/api/turler", () =>
 .RequireAuthorization();
 
 // ==================== DEĞERLENDİRMELER API ====================
+
+// Tüm değerlendirmeleri getir (Admin için)
+app.MapGet("/api/degerlendirmeler", () =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    var degerlendirmeler = new List<object>();
+    
+    var cmd = new NpgsqlCommand(@"
+        SELECT d.DegerlendirmeID, d.Puan, d.Yorum, d.Tarih, k.AdSoyad, d.UyeID, ki.Baslik, d.KitapID
+        FROM Degerlendirmeler d
+        JOIN Kullanicilar k ON d.UyeID = k.KullaniciID
+        JOIN Kitaplar ki ON d.KitapID = ki.KitapID
+        ORDER BY d.Tarih DESC", conn);
+    
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
+    {
+        degerlendirmeler.Add(new
+        {
+            DegerlendirmeID = reader.GetInt32(0),
+            Puan = reader.GetInt16(1),
+            Yorum = reader.IsDBNull(2) ? "" : reader.GetString(2),
+            Tarih = reader.GetDateTime(3),
+            AdSoyad = reader.GetString(4),
+            UyeID = reader.GetInt32(5),
+            Baslik = reader.GetString(6),
+            KitapID = reader.GetInt32(7)
+        });
+    }
+    
+    return Results.Ok(degerlendirmeler);
+})
+.WithName("GetAllDegerlendirmeler")
+.WithTags("Değerlendirmeler")
+.RequireAuthorization();
 
 // Kitaba ait değerlendirmeleri getir
 app.MapGet("/api/kitaplar/{kitapId}/degerlendirmeler", (int kitapId) =>
