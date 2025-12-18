@@ -209,6 +209,20 @@ const api = {
         return await this.request(`/uyeler/${user.id}`);
     },
 
+    // Profil güncelle (telefon, e-posta)
+    async profilGuncelle(telefon, email) {
+        const user = Auth.getUser();
+        if (!user || !user.id) throw new Error('Giriş yapmalısınız');
+
+        return await this.request(`/uyeler/${user.id}/profil`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                Telefon: telefon || null,
+                Email: email || null
+            })
+        });
+    },
+
     // Değerlendirmeler
     async getKitapDegerlendirmeleri(kitapId) {
         return await this.request(`/kitaplar/${kitapId}/degerlendirmeler`) || [];

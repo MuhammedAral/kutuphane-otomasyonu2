@@ -82,7 +82,8 @@
                 <form id="register-form" class="login-form">
                     <div class="input-group">
                         <span class="input-icon">👤</span>
-                        <input type="text" id="register-username" placeholder="Kullanıcı Adı" required autocomplete="username">
+                        <input type="text" id="register-username" placeholder="Kullanıcı Adı" required
+                            autocomplete="username">
                     </div>
 
                     <div class="input-group">
@@ -92,7 +93,8 @@
 
                     <div class="input-group">
                         <span class="input-icon">📧</span>
-                        <input type="email" id="register-email" placeholder="E-posta (@gmail.com)" required autocomplete="email">
+                        <input type="email" id="register-email" placeholder="E-posta (@gmail.com)" required
+                            autocomplete="email">
                     </div>
 
                     <div class="input-group">
@@ -102,12 +104,14 @@
 
                     <div class="input-group">
                         <span class="input-icon">🔒</span>
-                        <input type="password" id="register-password" placeholder="Şifre (en az 6 karakter)" required autocomplete="new-password">
+                        <input type="password" id="register-password" placeholder="Şifre (en az 6 karakter)" required
+                            autocomplete="new-password">
                     </div>
 
                     <div class="input-group">
                         <span class="input-icon">🔒</span>
-                        <input type="password" id="register-password-confirm" placeholder="Şifre Tekrar" required autocomplete="new-password">
+                        <input type="password" id="register-password-confirm" placeholder="Şifre Tekrar" required
+                            autocomplete="new-password">
                     </div>
 
                     <div id="register-error" class="error-message"></div>
@@ -136,7 +140,8 @@
                 <form id="verify-form" class="login-form">
                     <div class="input-group">
                         <span class="input-icon">🔢</span>
-                        <input type="text" id="verify-code" placeholder="6 haneli doğrulama kodu" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric">
+                        <input type="text" id="verify-code" placeholder="6 haneli doğrulama kodu" required maxlength="6"
+                            pattern="[0-9]{6}" inputmode="numeric">
                     </div>
 
                     <div id="verify-error" class="error-message"></div>
@@ -279,12 +284,13 @@
                                 <span class="menu-value" id="profile-email">-</span>
                             </div>
                         </div>
-                        <div class="menu-item">
+                        <div class="menu-item" onclick="openEditProfileModal()" style="cursor: pointer;">
                             <span class="menu-icon">📱</span>
                             <div class="menu-content">
                                 <span class="menu-label">Telefon</span>
                                 <span class="menu-value" id="profile-phone">-</span>
                             </div>
+                            <span class="menu-edit-icon" style="margin-left: auto; color: var(--primary);">✏️</span>
                         </div>
                         <div class="menu-item">
                             <span class="menu-icon">📅</span>
@@ -294,6 +300,11 @@
                             </div>
                         </div>
                     </div>
+
+                    <button class="btn btn-primary btn-block" onclick="openEditProfileModal()"
+                        style="margin-bottom: 1rem;">
+                        ✏️ Profili Düzenle
+                    </button>
 
                     <button class="btn btn-danger btn-block" onclick="logout()">
                         🚪 Çıkış Yap
@@ -332,6 +343,37 @@
                 </div>
                 <div class="modal-body" id="modal-body">
                     <!-- Content loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Edit Modal -->
+        <div id="profile-edit-modal" class="modal">
+            <div class="modal-backdrop" onclick="closeProfileModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Profili Düzenle</h2>
+                    <button class="modal-close" onclick="closeProfileModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <form id="profile-edit-form" class="login-form" style="padding: 1rem 0;">
+                        <div class="input-group">
+                            <span class="input-icon">📱</span>
+                            <input type="tel" id="edit-phone" placeholder="Telefon Numarası" autocomplete="tel">
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-icon">📧</span>
+                            <input type="email" id="edit-email" placeholder="E-posta Adresi" autocomplete="email">
+                        </div>
+
+                        <div id="profile-edit-error" class="error-message"></div>
+
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <span class="btn-text">💾 Kaydet</span>
+                            <span class="btn-loader" style="display: none;"></span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

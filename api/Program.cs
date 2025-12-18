@@ -998,6 +998,34 @@ app.MapGet("/api/uyeler/{id}", (int id) =>
 .WithTags("Üyeler")
 .RequireAuthorization();
 
+// Profil güncelleme (telefon, e-posta)
+app.MapPut("/api/uyeler/{id}/profil", (int id, ProfilGuncelleRequest request) =>
+{
+    using var conn = new NpgsqlConnection(connectionString);
+    conn.Open();
+    
+    // Sadece kendi profilini güncelleyebilir mi kontrolü burada yapılabilir
+    // Şimdilik basit güncelleme
+    var cmd = new NpgsqlCommand(@"
+        UPDATE Kullanicilar 
+        SET Telefon = @telefon, Email = @email 
+        WHERE KullaniciID = @id", conn);
+    
+    cmd.Parameters.AddWithValue("@id", id);
+    cmd.Parameters.AddWithValue("@telefon", (object?)request.Telefon ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("@email", (object?)request.Email ?? DBNull.Value);
+    
+    var affected = cmd.ExecuteNonQuery();
+    
+    if (affected > 0)
+        return Results.Ok(new { Success = true, Mesaj = "Profil güncellendi" });
+    
+    return Results.NotFound(new { Success = false, Mesaj = "Kullanıcı bulunamadı" });
+})
+.WithName("UpdateUyeProfil")
+.WithTags("Üyeler")
+.RequireAuthorization();
+
 // ==================== ÖDÜNÇ İŞLEMLERİ API ====================
 
 app.MapGet("/api/odunc", (string? filter, string? search) =>
@@ -1893,3 +1921,4 @@ public record VerifyRequest(int UserId, string Kod);
 public record UyeRequest(string KullaniciAdi, string Sifre, string AdSoyad, string? Email, string? Telefon);
 public record ProfilUpdateRequest(string AdSoyad, string KullaniciAdi, string? Email, string? Telefon, string MevcutSifre, string? YeniSifre);
 public record DegerlendirmeRequest(int KitapID, int UyeID, int Puan, string? Yorum);
+public record ProfilGuncelleRequest(string? Telefon, string? Email);

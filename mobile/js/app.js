@@ -778,6 +778,71 @@ async function loadProfile() {
     }
 }
 
+// Profil düzenleme modal'ını aç
+async function openEditProfileModal() {
+    const modal = document.getElementById('profile-edit-modal');
+    modal.classList.add('show');
+
+    // Mevcut değerleri yükle
+    try {
+        const profil = await api.getProfilBilgileri();
+        if (profil) {
+            const telefon = profil.telefon || profil.Telefon || '';
+            const email = profil.email || profil.Email || '';
+            document.getElementById('edit-phone').value = telefon;
+            document.getElementById('edit-email').value = email;
+        }
+    } catch (error) {
+        console.error('Profil yükleme hatası:', error);
+    }
+}
+
+// Profil düzenleme modal'ını kapat
+function closeProfileModal() {
+    document.getElementById('profile-edit-modal').classList.remove('show');
+    document.getElementById('profile-edit-error').classList.remove('show');
+}
+
+// Profil düzenleme form event listener
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('profile-edit-form');
+    if (form) {
+        form.addEventListener('submit', handleProfileUpdate);
+    }
+});
+
+// Profil güncelleme işlemi
+async function handleProfileUpdate(e) {
+    e.preventDefault();
+
+    const telefon = document.getElementById('edit-phone').value.trim();
+    const email = document.getElementById('edit-email').value.trim();
+    const errorEl = document.getElementById('profile-edit-error');
+    const btn = e.target.querySelector('button');
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+
+    // Loading durumu
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'block';
+    errorEl.classList.remove('show');
+
+    try {
+        await api.profilGuncelle(telefon, email);
+        showToast('Profil güncellendi! 🎉', 'success');
+        closeProfileModal();
+        // Profili yeniden yükle
+        await loadProfile();
+    } catch (error) {
+        showError(errorEl, error.message);
+    } finally {
+        btn.disabled = false;
+        btnText.style.display = 'block';
+        btnLoader.style.display = 'none';
+    }
+}
+
 // ============================================
 // PWA SERVICE WORKER
 // ============================================
