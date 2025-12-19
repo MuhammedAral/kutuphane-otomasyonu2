@@ -2,7 +2,7 @@
 // KÜTÜPHANE WEB SİTESİ - API İSTEKLERİ
 // ============================================
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5026/api';
 
 // Token işlemleri
 const Auth = {

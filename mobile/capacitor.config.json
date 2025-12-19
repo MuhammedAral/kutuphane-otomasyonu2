@@ -1,0 +1,9 @@
+{
+  "appId": "com.kutuphane.mobil",
+  "appName": "Kutuphane Mobil",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}
