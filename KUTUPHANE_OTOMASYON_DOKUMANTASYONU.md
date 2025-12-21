@@ -4,7 +4,7 @@
 ---
 
 **Proje Adı:** Kütüphane Otomasyon Sistemi  
-**Geliştirici:** Muhammed Ali Aral  
+**Geliştiriciler:** Muhammed Ali Aral, Yağız Van  
 **Tarih:** Aralık 2024  
 **Versiyon:** 1.0  
 
