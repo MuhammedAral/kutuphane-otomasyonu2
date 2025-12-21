@@ -123,6 +123,49 @@ const api = {
         return { token: data.token, user };
     },
 
+    // Kayıt ol
+    async register(kullaniciAdi, adSoyad, email, telefon, sifre) {
+        const response = await fetch(`${API_BASE}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                KullaniciAdi: kullaniciAdi,
+                AdSoyad: adSoyad,
+                Email: email,
+                Telefon: telefon || null,
+                Sifre: sifre
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Kayıt başarısız');
+        }
+
+        return data;
+    },
+
+    // E-posta doğrula
+    async verifyEmail(userId, kod) {
+        const response = await fetch(`${API_BASE}/auth/verify-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                UserId: userId,
+                Kod: kod
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Doğrulama başarısız');
+        }
+
+        return data;
+    },
+
     // Kitaplar
     async getKitaplar() {
         return await this.request('/kitaplar') || [];
@@ -164,6 +207,20 @@ const api = {
         const user = Auth.getUser();
         if (!user || !user.id) return null;
         return await this.request(`/uyeler/${user.id}`);
+    },
+
+    // Profil güncelle (telefon, e-posta)
+    async profilGuncelle(telefon, email) {
+        const user = Auth.getUser();
+        if (!user || !user.id) throw new Error('Giriş yapmalısınız');
+
+        return await this.request(`/uyeler/${user.id}/profil`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                Telefon: telefon || null,
+                Email: email || null
+            })
+        });
     },
 
     // Değerlendirmeler

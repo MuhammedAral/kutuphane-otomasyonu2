@@ -152,5 +152,5 @@ Bu proje eğitim amaçlı geliştirilmiştir.
 
 ---
 
-**Geliştirici:** Muhammed Ali Aral  
-**Tarih:** Aralık 2024
+
+**Tarih:** Aralık 2025

@@ -11,8 +11,8 @@ using KutuphaneApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Port'u sabit olarak ayarla (launchSettings.json'dan bağımsız)
-builder.WebHost.UseUrls("http://localhost:5026");
+// Port'u sabit olarak ayarla - 0.0.0.0 ile tüm ağ arayüzlerinden erişime izin ver
+builder.WebHost.UseUrls("http://0.0.0.0:5026");
 
 // Add services
 builder.Services.AddEndpointsApiExplorer();

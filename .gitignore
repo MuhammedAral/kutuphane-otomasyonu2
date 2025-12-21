@@ -37,6 +37,10 @@ desktop.ini
 # Paketler
 packages/
 *.nupkg
+node_modules/
+
+# Mobile Android Build
+mobile/android/
 
 # Gizli dosyalar
 .env
