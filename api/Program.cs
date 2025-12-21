@@ -11,6 +11,9 @@ using KutuphaneApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Port'u sabit olarak ayarla (launchSettings.json'dan bağımsız)
+builder.WebHost.UseUrls("http://localhost:5026");
+
 // Add services
 builder.Services.AddEndpointsApiExplorer();
 
@@ -151,9 +154,8 @@ if (Directory.Exists(mobilePath))
     });
 }
 
-// Database connection string - SUPABASE PostgreSQL (Transaction Pooler - IPv4 Compatible)
-// No Reset On Close=true is required for Transaction Pooler (doesn't support PREPARE statements)
-var connectionString = "Host=aws-1-eu-central-1.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.cajuuwmwldceggretuyq;Password=201005Ma.-;SSL Mode=Require;Trust Server Certificate=true;Multiplexing=false;No Reset On Close=true;Command Timeout=60";
+// Database connection string - SUPABASE PostgreSQL (Session Pooler - IPv4 Compatible)
+var connectionString = "Host=aws-1-eu-central-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.cajuuwmwldceggretuyq;Password=201005Ma.-;SSL Mode=Require;Trust Server Certificate=true;Command Timeout=60";
 
 // Yardımcı Metot: Şifre Hashleme
 string HashPassword(string password)
@@ -898,14 +900,42 @@ app.MapPut("/api/kitaplar/{id}", (int id, KitapRequest kitap) =>
 
 app.MapDelete("/api/kitaplar/{id}", (int id) =>
 {
-    using var conn = new NpgsqlConnection(connectionString);
-    conn.Open();
-    
-    var cmd = new NpgsqlCommand(@"DELETE FROM Kitaplar WHERE KitapID = @id", conn);
-    cmd.Parameters.AddWithValue("@id", id);
-    
-    var affected = cmd.ExecuteNonQuery();
-    return affected > 0 ? Results.Ok(new { message = "Kitap silindi" }) : Results.NotFound();
+    try
+    {
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        
+        // Önce aktif ödünç kontrolü yap
+        var checkCmd = new NpgsqlCommand(@"SELECT COUNT(*) FROM OduncIslemleri WHERE KitapID = @id AND Durum = 'Odunc'", conn);
+        checkCmd.Parameters.AddWithValue("@id", id);
+        var oduncCount = Convert.ToInt32(checkCmd.ExecuteScalar());
+        
+        if (oduncCount > 0)
+            return Results.BadRequest(new { Success = false, Mesaj = "Bu kitap şu anda ödünçte! Önce iade alınmalı." });
+        
+        // İade edilmiş ödünç işlemlerini sil
+        var deleteOdunc = new NpgsqlCommand(@"DELETE FROM OduncIslemleri WHERE KitapID = @id", conn);
+        deleteOdunc.Parameters.AddWithValue("@id", id);
+        deleteOdunc.ExecuteNonQuery();
+        
+        // Değerlendirmeleri sil
+        var deleteDeger = new NpgsqlCommand(@"DELETE FROM Degerlendirmeler WHERE KitapID = @id", conn);
+        deleteDeger.Parameters.AddWithValue("@id", id);
+        deleteDeger.ExecuteNonQuery();
+        
+        // Kitabı sil
+        var cmd = new NpgsqlCommand(@"DELETE FROM Kitaplar WHERE KitapID = @id", conn);
+        cmd.Parameters.AddWithValue("@id", id);
+        
+        var affected = cmd.ExecuteNonQuery();
+        return affected > 0 
+            ? Results.Ok(new { Success = true, Mesaj = "Kitap silindi" }) 
+            : Results.NotFound(new { Success = false, Mesaj = "Kitap bulunamadı" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { Success = false, Mesaj = $"Silme hatası: {ex.Message}" });
+    }
 })
 .WithName("DeleteKitap")
 .WithTags("Kitaplar")
@@ -1587,52 +1617,73 @@ app.MapPost("/api/uyeler", (UyeRequest request) =>
 
 app.MapDelete("/api/uyeler/{id}", (int id) =>
 {
-    using var conn = new NpgsqlConnection(connectionString);
-    conn.Open();
-    
-    var checkCmd = new NpgsqlCommand("SELECT Rol FROM Kullanicilar WHERE KullaniciID = @id", conn);
-    checkCmd.Parameters.AddWithValue("@id", id);
-    var rol = checkCmd.ExecuteScalar()?.ToString();
-    
-    if (rol == "Yonetici")
-        return Results.BadRequest(new { Success = false, Mesaj = "Yönetici kullanıcı silinemez!" });
-    
-    var oduncCmd = new NpgsqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc'", conn);
-    oduncCmd.Parameters.AddWithValue("@id", id);
-    if (Convert.ToInt32(oduncCmd.ExecuteScalar()) > 0)
-        return Results.BadRequest(new { Success = false, Mesaj = "Bu üyenin aktif ödünç işlemi var!" });
-    
-    using (var cmd = new NpgsqlCommand("DELETE FROM OduncIslemleri WHERE UyeID = @id", conn))
-    {
-        cmd.Parameters.AddWithValue("@id", id);
-        cmd.ExecuteNonQuery();
-    }
-    
-    // Şifre sıfırlama işlemlerini sil
-    using (var cmd = new NpgsqlCommand("DELETE FROM SifreSifirlamaIslemleri WHERE KullaniciID = @id", conn))
-    {
-        cmd.Parameters.AddWithValue("@id", id);
-        cmd.ExecuteNonQuery();
-    }
-    
-    // E-posta doğrulama işlemlerini sil (varsa)
     try
     {
-        using (var cmd = new NpgsqlCommand("DELETE FROM EmailDogrulamaIslemleri WHERE KullaniciID = @id", conn))
+        using var conn = new NpgsqlConnection(connectionString);
+        conn.Open();
+        
+        var checkCmd = new NpgsqlCommand("SELECT Rol FROM Kullanicilar WHERE KullaniciID = @id", conn);
+        checkCmd.Parameters.AddWithValue("@id", id);
+        var rol = checkCmd.ExecuteScalar()?.ToString();
+        
+        if (rol == null)
+            return Results.NotFound(new { Success = false, Mesaj = "Üye bulunamadı!" });
+        
+        if (rol == "Yonetici")
+            return Results.BadRequest(new { Success = false, Mesaj = "Yönetici kullanıcı silinemez!" });
+        
+        var oduncCmd = new NpgsqlCommand("SELECT COUNT(*) FROM OduncIslemleri WHERE UyeID = @id AND Durum = 'Odunc'", conn);
+        oduncCmd.Parameters.AddWithValue("@id", id);
+        if (Convert.ToInt32(oduncCmd.ExecuteScalar()) > 0)
+            return Results.BadRequest(new { Success = false, Mesaj = "Bu üyenin aktif ödünç işlemi var!" });
+        
+        // Değerlendirmeleri sil
+        using (var cmd = new NpgsqlCommand("DELETE FROM Degerlendirmeler WHERE UyeID = @id", conn))
         {
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
         }
+        
+        // Ödünç işlemlerini sil
+        using (var cmd = new NpgsqlCommand("DELETE FROM OduncIslemleri WHERE UyeID = @id", conn))
+        {
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+        
+        // Şifre sıfırlama işlemlerini sil
+        using (var cmd = new NpgsqlCommand("DELETE FROM SifreSifirlamaIslemleri WHERE KullaniciID = @id", conn))
+        {
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+        
+        // E-posta doğrulama işlemlerini sil (varsa)
+        try
+        {
+            using (var cmd = new NpgsqlCommand("DELETE FROM EmailDogrulamaIslemleri WHERE KullaniciID = @id", conn))
+            {
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.ExecuteNonQuery();
+            }
+        }
+        catch { /* Tablo yoksa devam et */ }
+        
+        // Kullanıcıyı sil
+        using (var cmd = new NpgsqlCommand("DELETE FROM Kullanicilar WHERE KullaniciID = @id", conn))
+        {
+            cmd.Parameters.AddWithValue("@id", id);
+            var affected = cmd.ExecuteNonQuery();
+            if (affected == 0)
+                return Results.NotFound(new { Success = false, Mesaj = "Üye silinemedi!" });
+        }
+        
+        return Results.Ok(new { Success = true, Mesaj = "Üye silindi" });
     }
-    catch { /* Tablo yoksa devam et */ }
-    
-    using (var cmd = new NpgsqlCommand("DELETE FROM Kullanicilar WHERE KullaniciID = @id", conn))
+    catch (Exception ex)
     {
-        cmd.Parameters.AddWithValue("@id", id);
-        cmd.ExecuteNonQuery();
+        return Results.BadRequest(new { Success = false, Mesaj = $"Silme hatası: {ex.Message}" });
     }
-    
-    return Results.Ok(new { Success = true, Mesaj = "Üye silindi" });
 })
 .WithName("DeleteUye")
 .WithTags("Üyeler")
