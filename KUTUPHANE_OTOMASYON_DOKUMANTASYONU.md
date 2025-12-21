@@ -858,7 +858,90 @@ Web sitesi, masaüstü uygulamasıyla aynı REST API'yi kullanır. Token yöneti
 
 ---
 
-# 13. MOBİL UYGULAMA
+# 13. DOCKER ENTEGRASYONU
+
+## 13.1 Genel Bakış
+
+Proje, Docker kullanılarak containerize edilmiştir. Bu sayede uygulama herhangi bir ortamda (geliştirme, test, production) aynı şekilde çalışabilir.
+
+## 13.2 Docker Ne Yapıyor?
+
+| Bileşen | Açıklama |
+|---------|----------|
+| **Container** | REST API'yi izole ortamda çalıştırır |
+| **Port** | 5026 portunda yayın yapar |
+| **Teknoloji** | ASP.NET Core 8.0 |
+| **Veritabanı** | Supabase PostgreSQL (bulut) |
+
+## 13.3 Docker Dosyaları
+
+### api/Dockerfile
+```dockerfile
+# Multi-stage build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY api/KutuphaneApi.csproj ./api/
+WORKDIR /src/api
+RUN dotnet restore
+COPY api/ ./
+RUN dotnet publish -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:5026
+EXPOSE 5026
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "KutuphaneApi.dll"]
+```
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: kutuphane-api
+    ports:
+      - "5026:5026"
+    volumes:
+      - ./website:/app/website:ro
+      - ./mobile:/app/mobile:ro
+    restart: unless-stopped
+```
+
+## 13.4 Kullanım Komutları
+
+| Komut | Açıklama |
+|-------|----------|
+| `docker-compose up --build` | İlk kez başlat (build + run) |
+| `docker-compose up -d` | Arka planda başlat |
+| `docker-compose down` | Durdur |
+| `docker logs kutuphane-api` | Logları gör |
+| `docker ps` | Çalışan container'ları listele |
+
+## 13.5 Docker vs Normal Çalıştırma
+
+| Özellik | Normal (`dotnet run`) | Docker |
+|---------|----------------------|--------|
+| Gereksinim | .NET 8.0 SDK | Docker Desktop |
+| Başlatma | `cd api && dotnet run` | `docker-compose up` |
+| Port | 5026 | 5026 |
+| Ortam | Sistem bağımlı | İzole container |
+| Kullanım | Günlük geliştirme | Deploy, takım çalışması |
+
+## 13.6 Erişim Adresleri (Docker Çalışırken)
+
+| Adres | Açıklama |
+|-------|----------|
+| http://localhost:5026 | API ve Website |
+| http://localhost:5026/swagger | Swagger UI |
+| http://localhost:5026/mobile | Mobil Uygulama |
+
+---
+
+# 14. MOBİL UYGULAMA
 
 ## 13.1 Genel Bakış
 
