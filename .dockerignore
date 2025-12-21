@@ -1,0 +1,47 @@
+# Docker build sırasında atlanacak dosyalar
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vs
+.vscode
+.idea
+*.user
+*.suo
+
+# Build çıktıları
+**/bin
+**/obj
+**/publish
+
+# Node modülleri
+**/node_modules
+
+# Logs
+*.log
+
+# Geçici dosyalar
+*.tmp
+*.temp
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Test dosyaları
+**/*.Tests
+**/TestResults
+
+# Dokümantasyon
+*.md
+*.docx
+*.pdf
+!README.md
+
+# Python cache
+__pycache__
+*.pyc

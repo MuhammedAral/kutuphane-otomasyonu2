@@ -1,19 +1,40 @@
+# Kütüphane Otomasyon Sistemi - Docker Compose
+# Kullanım: docker-compose up --build
+
 version: '3.8'
 
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: kutuphane-sqlserver
-    hostname: kutuphanesql
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourStrong@Password123
-      - MSSQL_PID=Express
+  # ============ API SERVİSİ ============
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: kutuphane-api
     ports:
-      - "1433:1433" 
+      - "5026:5026" # Host:Container port mapping
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5026
     volumes:
-      - sqlserver_data:/var/opt/mssql
-    restart: always
+      # Website ve Mobile klasörlerini bağla
+      - ./website:/app/website:ro
+      - ./mobile:/app/mobile:ro
+    restart: unless-stopped
 
-volumes:
-  sqlserver_data:
+# ============ NOTLAR ============
+#
+# BAŞLATMA:
+#   docker-compose up --build
+#
+# ARKA PLANDA BAŞLATMA:
+#   docker-compose up -d --build
+#
+# DURDURMA:
+#   docker-compose down
+#
+# LOGLARI GÖRME:
+#   docker-compose logs -f api
+#
+# ERİŞİM:
+#   API: http://localhost:5026
+#   Swagger: http://localhost:5026/swagger

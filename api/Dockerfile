@@ -1,19 +1,35 @@
-# Build stage
+# Kütüphane API - Docker Image
+# Multi-stage build ile optimize edilmiş
+
+# ============ BUILD AŞAMASI ============
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["KutuphaneApi.csproj", "."]
+
+# Proje dosyasını kopyala ve restore et
+COPY api/KutuphaneApi.csproj ./api/
+WORKDIR /src/api
 RUN dotnet restore
-COPY . .
+
+# API kaynak kodunu kopyala
+COPY api/ ./
+
+# Release modunda derle
 RUN dotnet publish -c Release -o /app/publish
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# ============ ÇALIŞTIRMA AŞAMASI ============
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
+
+# Türkçe karakter desteği için
+ENV LANG=tr_TR.UTF-8
+ENV LC_ALL=tr_TR.UTF-8
+
+# Port ayarı
+ENV ASPNETCORE_URLS=http://+:5026
+EXPOSE 5026
+
+# Build aşamasından derlenmiş dosyaları kopyala
 COPY --from=build /app/publish .
 
-# Render uses PORT environment variable
-ENV ASPNETCORE_URLS=http://+:${PORT:-8080}
-ENV ASPNETCORE_ENVIRONMENT=Production
-
-EXPOSE 8080
+# Uygulamayı başlat
 ENTRYPOINT ["dotnet", "KutuphaneApi.dll"]
