@@ -742,43 +742,155 @@ Tüm veritabanı sorguları parametreli olarak yazılmıştır.
 
 # 10. KURULUM VE ÇALIŞTIRMA
 
-## 10.1 Gereksinimler
+## 10.1 Hızlı Başlangıç (Bulut - ÖNERİLEN)
 
-- .NET 8.0 SDK
-- İnternet bağlantısı (Supabase veritabanı için)
-- Windows 10/11 (WPF uygulaması için)
+Proje bulut altyapısı üzerinde çalışmaktadır. **Hiçbir kurulum gerektirmez!**
 
-## 10.2 API'yi Başlatma
+### 10.1.1 Canlı Erişim Adresleri
 
-```bash
-cd api
-dotnet run
-```
+| Platform | URL | Açıklama |
+|----------|-----|----------|
+| **API** | `https://kutuphane-api-production-31f3.up.railway.app` | Railway üzerinde çalışan REST API |
+| **Swagger** | `https://kutuphane-api-production-31f3.up.railway.app/swagger` | API dokümantasyonu |
+| **Web Sitesi** | `https://muhammedaral.github.io/kutuphane-otomasyonu2/` | GitHub Pages üzerinde web arayüzü |
 
-**Erişim Adresleri:**
-- API: http://localhost:5026
-- Swagger: http://localhost:5026/swagger
+### 10.1.2 Masaüstü Uygulaması (EXE)
 
-## 10.3 WPF Uygulamasını Başlatma
+Hazır EXE dosyasını kullanmak için:
 
-```bash
-cd csharp
-dotnet run
-```
+1. GitHub'dan projeyi indirin
+2. `csharp/publish/KutuphaneOtomasyon.exe` dosyasına çift tıklayın
+3. Uygulama açılır ve bulut API'ye bağlanır
 
-## 10.4 Varsayılan Giriş Bilgileri
+**Not:** Hiçbir ek yazılım (Docker, .NET SDK vb.) kurmanıza gerek yoktur.
+
+### 10.1.3 Varsayılan Giriş Bilgileri
 
 | Alan | Değer |
 |------|-------|
 | Kullanıcı Adı | admin |
 | Şifre | admin123 |
 
-## 10.5 EXE Oluşturma (Tek Dosya)
+## 10.2 Bulut Mimarisi
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                         KULLANICI                                    │
+├───────────────────┬───────────────────┬──────────────────────────────┤
+│   WPF (EXE)       │   Web Tarayıcı    │    Mobil (PWA/Android)       │
+│  csharp/publish/  │  GitHub Pages     │    mobile/                   │
+├───────────────────┴───────────────────┴──────────────────────────────┤
+│                              ▼                                        │
+│                         HTTPS / API                                   │
+│                              ▼                                        │
+├──────────────────────────────────────────────────────────────────────┤
+│                     RAILWAY CLOUD                                     │
+│           kutuphane-api-production-31f3.up.railway.app               │
+│                     (ASP.NET Core 8.0)                               │
+├──────────────────────────────────────────────────────────────────────┤
+│                              ▼                                        │
+│                         PostgreSQL                                    │
+│                              ▼                                        │
+├──────────────────────────────────────────────────────────────────────┤
+│                     SUPABASE CLOUD                                    │
+│              aws-1-eu-central-1.pooler.supabase.com                  │
+│                       (PostgreSQL)                                    │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## 10.3 Geliştirici Kurulumu (İsteğe Bağlı)
+
+Geliştirme yapmak veya lokal olarak çalıştırmak isteyenler için:
+
+### 10.3.1 Gereksinimler
+
+- .NET 8.0 SDK
+- Git (versiyon kontrolü için)
+- İnternet bağlantısı (Supabase veritabanı için)
+- Windows 10/11 (WPF uygulaması için)
+
+### 10.3.2 API'yi Lokal Başlatma
+
+```bash
+cd api
+dotnet run
+```
+
+**Lokal Erişim Adresleri:**
+- API: http://localhost:5026
+- Swagger: http://localhost:5026/swagger
+
+### 10.3.3 WPF Uygulamasını Lokal Başlatma
+
+```bash
+cd csharp
+dotnet run
+```
+
+**Not:** Lokal çalıştırmak için `ApiService.cs` dosyasındaki API URL'ini `http://localhost:5026` olarak değiştirmeniz gerekir.
+
+### 10.3.4 Yeni EXE Oluşturma
 
 ```bash
 cd csharp
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
 ```
+
+## 10.4 Railway Deployment (API)
+
+API, Railway.app platformunda Docker container olarak çalışmaktadır.
+
+### 10.4.1 Deployment Bilgileri
+
+| Parametre | Değer |
+|-----------|-------|
+| **Platform** | Railway.app |
+| **Region** | Europe (Amsterdam) |
+| **Runtime** | .NET 8.0 ASP.NET |
+| **Container** | Docker (mcr.microsoft.com/dotnet/aspnet:8.0) |
+| **URL** | https://kutuphane-api-production-31f3.up.railway.app |
+
+### 10.4.2 Otomatik Deployment
+
+GitHub `main` branch'ine her push yapıldığında Railway otomatik olarak:
+1. Yeni kodu çeker
+2. Docker image'ı yeniden build eder
+3. Container'ı yeniden başlatır
+
+### 10.4.3 Dockerfile
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY . .
+WORKDIR /src/api
+RUN dotnet publish -c Release -o /app/out
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app/out
+COPY --from=build /app/out .
+ENTRYPOINT ["dotnet", "KutuphaneApi.dll"]
+```
+
+## 10.5 GitHub Pages Deployment (Web)
+
+Web arayüzü GitHub Pages üzerinde statik olarak yayınlanmaktadır.
+
+### 10.5.1 Deployment Bilgileri
+
+| Parametre | Değer |
+|-----------|-------|
+| **Platform** | GitHub Pages |
+| **Branch** | main |
+| **Folder** | /docs |
+| **URL** | https://muhammedaral.github.io/kutuphane-otomasyonu2/ |
+
+### 10.5.2 Güncelleme
+
+Web sitesini güncellemek için:
+1. `website/` klasöründeki dosyaları düzenleyin
+2. Değişiklikleri `docs/` klasörüne kopyalayın
+3. `git push` yapın
 
 ---
 
