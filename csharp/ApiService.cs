@@ -13,7 +13,7 @@ namespace KutuphaneOtomasyon
         { 
             PropertyNameCaseInsensitive = true 
         };
-        private static string _baseUrl = "http://localhost:5026";
+        private static string _baseUrl = "https://kutuphane-api-production.up.railway.app";
         private static string? _token;
         
         static ApiService()
