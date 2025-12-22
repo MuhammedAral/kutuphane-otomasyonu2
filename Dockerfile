@@ -7,19 +7,19 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY . .
 
-# API'yi derle
+# API'yi derle - doğrudan /app'e
 WORKDIR /src/api
 RUN dotnet restore
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish -c Release -o /app
 
-# Website ve Mobile'ı kopyala
-RUN cp -r /src/website /app/publish/website
-RUN mkdir -p /app/publish/mobile && \
-    cp /src/mobile/index.html /app/publish/mobile/ && \
-    cp /src/mobile/manifest.json /app/publish/mobile/ && \
-    cp /src/mobile/sw.js /app/publish/mobile/ && \
-    cp -r /src/mobile/css /app/publish/mobile/ && \
-    cp -r /src/mobile/js /app/publish/mobile/
+# Website ve Mobile'ı /app altına kopyala
+RUN cp -r /src/website /app/website
+RUN mkdir -p /app/mobile && \
+    cp /src/mobile/index.html /app/mobile/ && \
+    cp /src/mobile/manifest.json /app/mobile/ && \
+    cp /src/mobile/sw.js /app/mobile/ && \
+    cp -r /src/mobile/css /app/mobile/ && \
+    cp -r /src/mobile/js /app/mobile/
 
 # Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
@@ -29,8 +29,8 @@ WORKDIR /app
 ENV LANG=tr_TR.UTF-8
 ENV LC_ALL=tr_TR.UTF-8
 
-# Tüm dosyaları kopyala
-COPY --from=build /app/publish .
+# Tüm dosyaları kopyala - doğrudan /app'ten
+COPY --from=build /app .
 
 # Uygulamayı başlat
 ENTRYPOINT ["dotnet", "KutuphaneApi.dll"]
