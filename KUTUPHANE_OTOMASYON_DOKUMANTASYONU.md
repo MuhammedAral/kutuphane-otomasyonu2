@@ -1765,5 +1765,6 @@ console.log('Silme sonucu:', result);
 
 ---
 
-**Son Güncelleme:** 21 Aralık 2024  
-**Dokümantasyon Sürümü:** 1.2
+**Son Güncelleme:** 22 Aralık 2024  
+**Dokümantasyon Sürümü:** 2.0 (Bulut Deployment)
+
