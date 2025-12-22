@@ -30,12 +30,12 @@ const Auth = {
     logout: () => {
         Auth.removeToken();
         Auth.removeUser();
-        window.location.href = '/login.html';
+        window.location.href = 'login.html';
     },
 
     requireAuth: () => {
         if (!Auth.isLoggedIn()) {
-            window.location.href = '/login.html';
+            window.location.href = 'login.html';
             return false;
         }
         return true;
