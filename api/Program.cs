@@ -379,6 +379,33 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// ==================== DEBUG ====================
+
+// Debug: Dosya yapısını kontrol et
+app.MapGet("/api/debug/paths", () =>
+{
+    var cwd = Directory.GetCurrentDirectory();
+    var files = new List<string>();
+    
+    try {
+        files.AddRange(Directory.GetDirectories(cwd).Select(d => "[DIR] " + Path.GetFileName(d)));
+        files.AddRange(Directory.GetFiles(cwd).Select(f => "[FILE] " + Path.GetFileName(f)));
+    } catch {}
+    
+    var websiteExists = Directory.Exists(Path.Combine(cwd, "website"));
+    var mobileExists = Directory.Exists(Path.Combine(cwd, "mobile"));
+    
+    return Results.Ok(new { 
+        CurrentDirectory = cwd, 
+        WebsiteExists = websiteExists,
+        MobileExists = mobileExists,
+        Contents = files 
+    });
+})
+.WithName("DebugPaths")
+.WithTags("Debug")
+.AllowAnonymous();
+
 // ==================== VERİ DÜZELTME ====================
 
 // Hatalı import edilen kitapları düzelt (baslik ve yazar yer değiştirmiş)
