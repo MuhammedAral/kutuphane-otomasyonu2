@@ -1,39 +1,32 @@
 # Kütüphane API + Website + Mobile - Docker Image
-# Railway.app için optimize edilmiş
+# Railway.app için optimize edilmiş (Single Stage)
 
-# ============ BUILD AŞAMASI ============
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# Proje dosyasını kopyala ve restore et
-COPY api/*.csproj ./api/
-WORKDIR /src/api
-RUN dotnet restore
-
-# API kaynak kodunu kopyala ve derle
-COPY api/ ./
-RUN dotnet publish -c Release -o /app/publish
-
-# Website ve Mobile klasörlerini build aşamasında kopyala
-WORKDIR /src
-COPY website/ /app/website/
-COPY mobile/index.html mobile/manifest.json mobile/sw.js /app/mobile/
-COPY mobile/css/ /app/mobile/css/
-COPY mobile/js/ /app/mobile/js/
-COPY mobile/images/ /app/mobile/images/
-
-# ============ ÇALIŞTIRMA AŞAMASI ============
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
 # Türkçe karakter desteği için
 ENV LANG=tr_TR.UTF-8
 ENV LC_ALL=tr_TR.UTF-8
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
-# Build aşamasından tüm dosyaları kopyala
-COPY --from=build /app/publish .
-COPY --from=build /app/website ./website
-COPY --from=build /app/mobile ./mobile
+# Tüm projeyi kopyala
+COPY . .
+
+# API'yi derle
+WORKDIR /app/api
+RUN dotnet restore
+RUN dotnet publish -c Release -o /app/out
+
+# Çalışma dizinini ayarla
+WORKDIR /app/out
+
+# Website ve mobile klasörlerini kopyala
+RUN cp -r /app/website ./website 2>/dev/null || true
+RUN cp -r /app/mobile/index.html /app/mobile/manifest.json /app/mobile/sw.js ./mobile/ 2>/dev/null || mkdir -p ./mobile
+RUN cp -r /app/mobile/css ./mobile/css 2>/dev/null || true
+RUN cp -r /app/mobile/js ./mobile/js 2>/dev/null || true
+RUN cp -r /app/mobile/images ./mobile/images 2>/dev/null || true
 
 # Uygulamayı başlat
 ENTRYPOINT ["dotnet", "KutuphaneApi.dll"]
