@@ -1,4 +1,4 @@
-# Kütüphane API - Docker Image
+# Kütüphane API + Website + Mobile - Docker Image
 # Railway.app için optimize edilmiş
 
 # ============ BUILD AŞAMASI ============
@@ -6,13 +6,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Proje dosyasını kopyala ve restore et
-COPY *.csproj ./
+COPY api/*.csproj ./api/
+WORKDIR /src/api
 RUN dotnet restore
 
-# Tüm kaynak kodunu kopyala
-COPY . ./
-
-# Release modunda derle
+# API kaynak kodunu kopyala ve derle
+COPY api/ ./
 RUN dotnet publish -c Release -o /app/publish
 
 # ============ ÇALIŞTIRMA AŞAMASI ============

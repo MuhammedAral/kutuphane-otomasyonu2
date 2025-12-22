@@ -89,7 +89,10 @@ app.UseAuthentication(); // Kimlik Doğrulama (Önce bu)
 app.UseAuthorization();  // Yetkilendirme (Sonra bu)
 
 // Static files - website klasöründen (UTF-8 charset ile)
-var websitePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "website");
+// Docker'da website klasörü ./website, lokal'de ../website
+var websitePath = Path.Combine(Directory.GetCurrentDirectory(), "website");
+if (!Directory.Exists(websitePath))
+    websitePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "website");
 if (Directory.Exists(websitePath))
 {
     app.UseDefaultFiles(new DefaultFilesOptions
@@ -120,7 +123,10 @@ if (Directory.Exists(websitePath))
 }
 
 // Static files - mobile klasöründen (PWA Mobil Uygulama)
-var mobilePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "mobile");
+// Docker'da mobile klasörü ./mobile, lokal'de ../mobile
+var mobilePath = Path.Combine(Directory.GetCurrentDirectory(), "mobile");
+if (!Directory.Exists(mobilePath))
+    mobilePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "mobile");
 if (Directory.Exists(mobilePath))
 {
     app.UseStaticFiles(new StaticFileOptions
