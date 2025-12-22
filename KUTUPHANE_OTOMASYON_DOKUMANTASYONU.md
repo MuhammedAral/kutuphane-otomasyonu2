@@ -394,7 +394,8 @@ kutuphane-otomasyonu/
 │   └── android/                  # Native Android projesi
 │
 ├── kutuphane-otomasyonu.sln      # Solution dosyası
-├── render.yaml                   # Render.com dağıtım yapılandırması
+├── railway.json                  # Railway.app yapılandırması
+├── docs/                         # GitHub Pages (Web Sitesi)
 ├── .gitignore                    # Git ignore dosyası
 └── README.md                     # Proje açıklaması
 ```
