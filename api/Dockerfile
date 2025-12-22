@@ -24,8 +24,8 @@ WORKDIR /app
 ENV LANG=tr_TR.UTF-8
 ENV LC_ALL=tr_TR.UTF-8
 
-# Port ayarı
-ENV ASPNETCORE_URLS=http://+:5026
+# Port ayarı - Railway dinamik port atar
+ENV ASPNETCORE_URLS=http://+:${PORT:-5026}
 EXPOSE 5026
 
 # Build aşamasından derlenmiş dosyaları kopyala

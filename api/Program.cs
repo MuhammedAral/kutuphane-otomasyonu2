@@ -11,8 +11,9 @@ using KutuphaneApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Port'u sabit olarak ayarla - 0.0.0.0 ile tüm ağ arayüzlerinden erişime izin ver
-builder.WebHost.UseUrls("http://0.0.0.0:5026");
+// Port ayarı - Railway için PORT env var, yoksa 5026
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5026";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // Add services
 builder.Services.AddEndpointsApiExplorer();
