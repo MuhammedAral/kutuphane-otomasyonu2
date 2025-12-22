@@ -14,6 +14,14 @@ RUN dotnet restore
 COPY api/ ./
 RUN dotnet publish -c Release -o /app/publish
 
+# Website ve Mobile klasörlerini build aşamasında kopyala
+WORKDIR /src
+COPY website/ /app/website/
+COPY mobile/index.html mobile/manifest.json mobile/sw.js /app/mobile/
+COPY mobile/css/ /app/mobile/css/
+COPY mobile/js/ /app/mobile/js/
+COPY mobile/images/ /app/mobile/images/
+
 # ============ ÇALIŞTIRMA AŞAMASI ============
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
@@ -22,12 +30,10 @@ WORKDIR /app
 ENV LANG=tr_TR.UTF-8
 ENV LC_ALL=tr_TR.UTF-8
 
-# Build aşamasından derlenmiş dosyaları kopyala
+# Build aşamasından tüm dosyaları kopyala
 COPY --from=build /app/publish .
-
-# Website ve Mobile klasörlerini kopyala
-COPY website ./website
-COPY mobile ./mobile
+COPY --from=build /app/website ./website
+COPY --from=build /app/mobile ./mobile
 
 # Uygulamayı başlat
 ENTRYPOINT ["dotnet", "KutuphaneApi.dll"]
