@@ -16,8 +16,9 @@
 **/obj
 **/publish
 
-# Node modülleri
-**/node_modules
+# Node modülleri (sadece mobile altındaki)
+mobile/node_modules
+mobile/android
 
 # Logs
 *.log
@@ -45,3 +46,12 @@ Thumbs.db
 # Python cache
 __pycache__
 *.pyc
+
+# C# proje klasörleri
+csharp
+
+# Website ve Mobile DAHIL edilmeli
+!website
+!mobile
+!mobile/**
+!website/**
