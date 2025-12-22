@@ -386,20 +386,31 @@ app.MapGet("/api/debug/paths", () =>
 {
     var cwd = Directory.GetCurrentDirectory();
     var files = new List<string>();
+    var outFiles = new List<string>();
     
     try {
         files.AddRange(Directory.GetDirectories(cwd).Select(d => "[DIR] " + Path.GetFileName(d)));
         files.AddRange(Directory.GetFiles(cwd).Select(f => "[FILE] " + Path.GetFileName(f)));
     } catch {}
     
-    var websiteExists = Directory.Exists(Path.Combine(cwd, "website"));
-    var mobileExists = Directory.Exists(Path.Combine(cwd, "mobile"));
+    // /app/out içeriğini de kontrol et
+    var appOutPath = "/app/out";
+    try {
+        if (Directory.Exists(appOutPath)) {
+            outFiles.AddRange(Directory.GetDirectories(appOutPath).Select(d => "[DIR] " + Path.GetFileName(d)));
+            outFiles.AddRange(Directory.GetFiles(appOutPath).Select(f => "[FILE] " + Path.GetFileName(f)));
+        }
+    } catch {}
+    
+    var websiteExists = Directory.Exists(Path.Combine(cwd, "website")) || Directory.Exists(Path.Combine(appOutPath, "website"));
+    var mobileExists = Directory.Exists(Path.Combine(cwd, "mobile")) || Directory.Exists(Path.Combine(appOutPath, "mobile"));
     
     return Results.Ok(new { 
         CurrentDirectory = cwd, 
         WebsiteExists = websiteExists,
         MobileExists = mobileExists,
-        Contents = files 
+        CwdContents = files,
+        AppOutContents = outFiles
     });
 })
 .WithName("DebugPaths")
