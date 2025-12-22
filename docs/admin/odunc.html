@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ödünç İşlemleri - Kütüphane Sistemi</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="icon">📚</span>
+                    <span class="text">Yönetici Paneli</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="./index.html" class="nav-item">
+                    <span class="icon">🏠</span>
+                    <span>Ana Sayfa</span>
+                </a>
+                <a href="./kitaplar.html" class="nav-item">
+                    <span class="icon">📖</span>
+                    <span>Kitaplar</span>
+                </a>
+                <a href="./uyeler.html" class="nav-item">
+                    <span class="icon">👥</span>
+                    <span>Üyeler</span>
+                </a>
+                <a href="./odunc.html" class="nav-item">
+                    <span class="icon">📋</span>
+                    <span>Ödünç İşlemleri</span>
+                </a>
+                <a href="./yorumlar.html" class="nav-item">
+                    <span class="icon">💬</span>
+                    <span>Yorumlar</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="logout-card" onclick="Auth.logout()">
+                    <span class="icon">🚪</span>
+                    <span>Çıkış Yap</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>📋 Ödünç İşlemleri</h1>
+                <p>Tüm ödünç alma ve iade işlemlerini yönetin.</p>
+            </div>
+
+            <!-- Özet Kartları -->
+            <div class="cards-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-card">
+                    <div class="card-icon purple">📖</div>
+                    <div class="card-value" id="stat-odunc">-</div>
+                    <div class="card-label">Ödünçte</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-icon green">✓</div>
+                    <div class="card-value" id="stat-iade">-</div>
+                    <div class="card-label">İade Edildi</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-icon red">⏰</div>
+                    <div class="card-value" id="stat-geciken">-</div>
+                    <div class="card-label">Geciken</div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-header">
+                    <h2>Tüm İşlemler</h2>
+                    <div class="search-box">
+                        <span class="icon">🔍</span>
+                        <input type="text" id="search-input" placeholder="Kitap veya üye ara...">
+                    </div>
+                </div>
+                <div class="table-body" id="odunc-table">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Yükleniyor...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        if (!Auth.requireAuth()) { }
+        else if (Auth.getUser().role !== 'Yonetici') {
+            window.location.href = '/index.html';
+        }
+
+        let allIslemler = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadIslemler();
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                filterIslemler(e.target.value);
+            });
+        });
+
+        async function loadIslemler() {
+            const container = document.getElementById('odunc-table');
+            try {
+                allIslemler = await api.getAllOdunc();
+
+                const odunc = allIslemler.filter(o => o.durum === 'Odunc').length;
+                const iade = allIslemler.filter(o => o.durum !== 'Odunc').length;
+                const geciken = allIslemler.filter(o =>
+                    o.durum === 'Odunc' && new Date(o.beklenenIadeTarihi) < new Date()
+                ).length;
+
+                document.getElementById('stat-odunc').textContent = odunc;
+                document.getElementById('stat-iade').textContent = iade;
+                document.getElementById('stat-geciken').textContent = geciken;
+
+                renderIslemler(allIslemler);
+            } catch (error) {
+                Utils.showError(container, 'İşlemler yüklenemedi');
+            }
+        }
+
+        function filterIslemler(query) {
+            if (!query) { renderIslemler(allIslemler); return; }
+            const q = query.toLowerCase();
+            const filtered = allIslemler.filter(o =>
+                (o.baslik || '').toLowerCase().includes(q) ||
+                (o.adSoyad || '').toLowerCase().includes(q)
+            );
+            renderIslemler(filtered);
+        }
+
+        function renderIslemler(islemler) {
+            const container = document.getElementById('odunc-table');
+            if (!islemler || islemler.length === 0) {
+                Utils.showEmpty(container, 'İşlem bulunamadı', '📋');
+                return;
+            }
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Kitap</th>
+                            <th>Üye</th>
+                            <th>Ödünç Tarihi</th>
+                            <th>Beklenen İade</th>
+                            <th>İade Tarihi</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${islemler.map(o => `
+                            <tr>
+                                <td>${o.islemID}</td>
+                                <td><strong>${o.baslik || '-'}</strong></td>
+                                <td>${o.adSoyad || '-'}</td>
+                                <td>${Utils.formatDate(o.oduncTarihi)}</td>
+                                <td>${Utils.formatDate(o.beklenenIadeTarihi)}</td>
+                                <td>${o.iadeTarihi ? Utils.formatDate(o.iadeTarihi) : '-'}</td>
+                                <td>${getDurumBadge(o)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getDurumBadge(o) {
+            if (o.durum !== 'Odunc') {
+                return '<span class="badge badge-success">✓ İade Edildi</span>';
+            }
+            const gecikti = new Date(o.beklenenIadeTarihi) < new Date();
+            if (gecikti) {
+                return '<span class="badge badge-danger">⚠️ Gecikti</span>';
+            }
+            return '<span class="badge badge-warning">📖 Ödünçte</span>';
+        }
+    </script>
+</body>
+
+</html>

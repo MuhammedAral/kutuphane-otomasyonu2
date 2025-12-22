@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - Kütüphane Sistemi</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="icon">📚</span>
+                    <span class="text">Kütüphane</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="./index.html" class="nav-item">
+                    <span class="icon">🏠</span>
+                    <span>Ana Sayfa</span>
+                </a>
+                <a href="./kitaplar.html" class="nav-item">
+                    <span class="icon">📖</span>
+                    <span>Kitaplar</span>
+                </a>
+                <a href="./odunclerim.html" class="nav-item">
+                    <span class="icon">📋</span>
+                    <span>Ödünçlerim</span>
+                </a>
+                <a href="./profil.html" class="nav-item">
+                    <span class="icon">👤</span>
+                    <span>Profil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="logout-card" onclick="Auth.logout()">
+                    <span class="icon">🚪</span>
+                    <span>Çıkış Yap</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>👤 Profil</h1>
+                <p>Hesap bilgilerinizi görüntüleyin.</p>
+            </div>
+
+            <div class="profile-card" id="profile-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Yükleniyor...</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="./js/api.js?v=2"></script>
+    <script>
+        Auth.requireAuth();
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProfil();
+        });
+
+        async function loadProfil() {
+            const container = document.getElementById('profile-container');
+            const user = Auth.getUser();
+            const isAdmin = user && user.role === 'Yonetici';
+
+            try {
+                const profil = await api.getProfilBilgileri();
+
+                if (!profil) {
+                    Utils.showError(container, 'Profil bilgileri yüklenemedi');
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="profile-banner">
+                        <div class="profile-avatar">${Utils.getInitials(profil.adSoyad)}</div>
+                        <h2>${profil.adSoyad || '-'}</h2>
+                        <p>@${profil.kullaniciAdi || '-'}</p>
+                    </div>
+                    <div class="profile-body">
+                        <div class="info-row">
+                            <span class="label">👤 Ad Soyad</span>
+                            <span class="value">${profil.adSoyad || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">🔑 Kullanıcı Adı</span>
+                            <span class="value">${profil.kullaniciAdi || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">📧 E-posta</span>
+                            <span class="value" id="display-email">${profil.email || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">📱 Telefon</span>
+                            <span class="value" id="display-phone">${profil.telefon || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">🏷️ Rol</span>
+                            <span class="value">
+                                <span class="badge badge-purple">${profil.rol || '-'}</span>
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">✅ Durum</span>
+                            <span class="value">
+                                ${profil.aktifMi
+                        ? '<span class="badge badge-success">Aktif</span>'
+                        : '<span class="badge badge-danger">Pasif</span>'
+                    }
+                            </span>
+                        </div>
+                    </div>
+                    ${!isAdmin ? `
+                    <div style="padding: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button class="btn btn-primary" onclick="openEditModal()" style="width: 100%;">
+                            ✏️ Profili Düzenle
+                        </button>
+                    </div>
+                    ` : ''}
+                `;
+            } catch (error) {
+                Utils.showError(container, 'Profil yüklenemedi');
+            }
+        }
+
+        // Profil düzenleme modal'ı aç
+        async function openEditModal() {
+            // Modal yoksa oluştur
+            let modal = document.getElementById('edit-profile-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'edit-profile-modal';
+                modal.className = 'modal';
+                // Inline style ekleyerek CSS önbellek sorununu aşıyoruz
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 1000;';
+                modal.innerHTML = `
+                    <div class="modal-backdrop" onclick="closeEditModal()" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);"></div>
+                    <div class="modal-content" style="position: relative; background: #2d2d44; border-radius: 15px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 1001;">
+                        <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #3f3f5a;">
+                            <h2 style="font-size: 18px; font-weight: 600; color: white;">✏️ Profili Düzenle</h2>
+                            <button class="modal-close" onclick="closeEditModal()" style="background: transparent; border: none; color: #9ca3af; font-size: 24px; cursor: pointer;">✕</button>
+                        </div>
+                        <div class="modal-body" style="padding: 24px;">
+                            <form id="edit-profile-form" onsubmit="handleProfileUpdate(event)">
+                                <div class="form-group" style="margin-bottom: 20px;">
+                                    <label style="display: block; margin-bottom: 8px; color: #c8c8d8; font-size: 13px;">📱 Telefon</label>
+                                    <input type="tel" id="edit-phone" class="form-control" placeholder="Telefon numaranızı girin" style="width: 100%; background: #252536; border: 1px solid #3f3f5a; border-radius: 15px; padding: 14px 16px; color: white; font-size: 14px; outline: none;">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 20px;">
+                                    <label style="display: block; margin-bottom: 8px; color: #c8c8d8; font-size: 13px;">📧 E-posta</label>
+                                    <input type="email" id="edit-email" class="form-control" placeholder="E-posta adresinizi girin" style="width: 100%; background: #252536; border: 1px solid #3f3f5a; border-radius: 15px; padding: 14px 16px; color: white; font-size: 14px; outline: none;">
+                                </div>
+                                <div id="edit-error" style="color: #ff4757; margin-bottom: 1rem; display: none;"></div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border: none; padding: 14px 28px; border-radius: 25px; font-size: 14px; font-weight: 600; cursor: pointer;" id="save-btn">
+                                    💾 Kaydet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            // Mevcut değerleri yükle
+            try {
+                const profil = await api.getProfilBilgileri();
+                if (profil) {
+                    document.getElementById('edit-phone').value = profil.telefon || '';
+                    document.getElementById('edit-email').value = profil.email || '';
+                }
+            } catch (error) {
+                console.error('Profil yükleme hatası:', error);
+            }
+
+            // Modal'ı flex olarak göster
+            modal.style.display = 'flex';
+        }
+
+        // Modal'ı kapat
+        function closeEditModal() {
+            const modal = document.getElementById('edit-profile-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Profil güncelleme işlemi
+        async function handleProfileUpdate(e) {
+            e.preventDefault();
+
+            const telefon = document.getElementById('edit-phone').value.trim();
+            const email = document.getElementById('edit-email').value.trim();
+            const errorEl = document.getElementById('edit-error');
+            const btn = document.getElementById('save-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Kaydediliyor...';
+            errorEl.style.display = 'none';
+
+            try {
+                await api.profilGuncelle(telefon, email);
+                closeEditModal();
+                // Sayfayı yeniden yükle
+                await loadProfil();
+                alert('Profil başarıyla güncellendi! 🎉');
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Kaydet';
+            }
+        }
+    </script>
+</body>
+
+</html>
