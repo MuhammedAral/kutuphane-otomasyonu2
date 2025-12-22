@@ -2,7 +2,7 @@
 // KÜTÜPHANE WEB SİTESİ - API İSTEKLERİ
 // ============================================
 
-const API_BASE = 'http://localhost:5026/api';
+const API_BASE = 'https://kutuphane-api-production.up.railway.app/api';
 
 // Token işlemleri
 const Auth = {

@@ -2,7 +2,7 @@
 // KÜTÜPHANE MOBİL UYGULAMA - API İSTEKLERİ
 // ============================================
 
-const API_BASE = 'http://10.0.2.2:5026/api';
+const API_BASE = 'https://kutuphane-api-production.up.railway.app/api';
 
 // Token işlemleri
 const Auth = {
