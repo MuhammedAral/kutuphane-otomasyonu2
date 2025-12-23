@@ -251,7 +251,8 @@ def create_documentation():
             ["Authentication", "JWT Bearer Token"],
             ["Excel İşlemleri", "ClosedXML"],
             ["Barkod", "ZXing.Net + AForge.Video"],
-            ["E-posta", "MailKit (Gmail SMTP)"]
+            ["E-posta", "MailKit (Gmail SMTP)"],
+            ["Rate Limiting", "System.Threading.RateLimiting"]
         ]
     )
     
@@ -614,6 +615,44 @@ def create_documentation():
             ["Profil Güncelleme", "✅", "✅ (Kendi)"]
         ]
     )
+    
+    add_heading_2(doc, "8.7 API Rate Limiting (İstek Sınırlama)")
+    doc.add_paragraph(
+        "API güvenliğini ve stabilitesini korumak için rate limiting (hız sınırlama) uygulanmıştır."
+    )
+    
+    add_table(doc,
+        ["Özellik", "Değer"],
+        [
+            ["Algoritma", "Fixed Window (Sabit Pencere)"],
+            ["Limit", "Her IP adresi için dakikada 100 istek"],
+            ["Sıra (Queue)", "0 (Sıraya alınmaz, direkt reddedilir)"],
+            ["Pencere", "1 Dakika"]
+        ]
+    )
+    
+    doc.add_paragraph("Limit aşıldığında:", style='List Bullet')
+    doc.add_paragraph("  - HTTP Kodu: 429 Too Many Requests")
+    doc.add_paragraph("  - Header: Retry-After: 60")
+    doc.add_paragraph("  - Mesaj: 'Çok fazla istek gönderdiniz. Lütfen 1 dakika bekleyip tekrar deneyin.'")
+    
+    add_heading_3(doc, "Implementasyon Kodu")
+    rate_limit_code = """builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            });
+    });
+});"""
+    add_code_block(doc, rate_limit_code)
     
     doc.add_page_break()
     

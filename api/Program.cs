@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 using KutuphaneApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,30 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // Add services
 builder.Services.AddEndpointsApiExplorer();
+
+// Rate Limiting (IP Bazlı)
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            });
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.Headers.Append("Retry-After", "60");
+        await context.HttpContext.Response.WriteAsync("Çok fazla istek gönderdiniz. Lütfen 1 dakika bekleyip tekrar deneyin.", token);
+    };
+});
 
 // Swagger Konfigürasyonu (Yetkilendirme Desteği ile)
 builder.Services.AddSwaggerGen(c =>
@@ -84,6 +109,8 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors("AllowAll");
+
+app.UseRateLimiter(); // Rate Limiter (CORS'tan sonra)
 
 app.UseAuthentication(); // Kimlik Doğrulama (Önce bu)
 app.UseAuthorization();  // Yetkilendirme (Sonra bu)

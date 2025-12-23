@@ -7,6 +7,7 @@
 **Geliştiriciler:** Muhammed Ali Aral, Yağız Van  
 **Tarih:** Aralık 2024  
 **Versiyon:** 1.0  
+**GitHub:** https://github.com/MuhammedAral/kutuphane-otomasyonu2
 
 ---
 
@@ -320,6 +321,7 @@ async function getKitaplar() {
 | Barkod | ZXing.Net + AForge.Video |
 | E-posta | MailKit (Gmail SMTP) |
 | Veritabanı Driver | Npgsql (PostgreSQL) |
+| Rate Limiting | Microsoft.AspNetCore.RateLimiting |
 
 ---
 
@@ -738,6 +740,73 @@ Tüm veritabanı sorguları parametreli olarak yazılmıştır.
 | Kendi Yorumunu Silme | ✅ | ✅ |
 | Başkasının Yorumunu Silme | ✅ | ❌ |
 | Profil Güncelleme | ✅ | ✅ (Kendi) |
+
+## 9.6 API Rate Limiting (İstek Sınırlama)
+
+API güvenliğini ve stabilitesini korumak için rate limiting (hız sınırlama) uygulanmıştır.
+
+**Özellikler:**
+- **Algoritma:** Fixed Window (Sabit Pencere)
+- **Limit:** Her IP adresi için dakikada 100 istek
+- **Sıra (Queue):** 0 (Sıraya alınmaz, direkt reddedilir)
+- **Pencere:** 1 Dakika
+
+**Aşıldığında:**
+- **HTTP Kodu:** 429 Too Many Requests
+- **Header:** `Retry-After: 60`
+- **Mesaj:** "Çok fazla istek gönderdiniz. Lütfen 1 dakika bekleyip tekrar deneyin."
+
+### 9.6.1 Implementasyon
+
+```csharp
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            });
+    });
+});
+```
+
+### 9.6.2 Rate Limit Akış Şeması
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    İSTEK GELİYOR                            │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│          IP Adresi tespit ediliyor                          │
+│    context.Connection.RemoteIpAddress                       │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│     Bu IP son 1 dakikada kaç istek gönderdi?                │
+└─────────────────────────────────────────────────────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+┌──────────────────────┐      ┌──────────────────────┐
+│   < 100 istek        │      │   >= 100 istek       │
+│   ✅ İZİN VER         │      │   ❌ REDDET           │
+└──────────────────────┘      └──────────────────────┘
+              │                           │
+              ▼                           ▼
+┌──────────────────────┐      ┌──────────────────────┐
+│  İstek işleniyor     │      │  HTTP 429 döndür     │
+│  Normal yanıt        │      │  Retry-After: 60     │
+└──────────────────────┘      └──────────────────────┘
+```
 
 ---
 
